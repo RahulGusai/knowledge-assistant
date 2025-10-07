@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Github, Slack, Trello, Chrome, Mail, Database } from "lucide-react";
+import { Github, Slack, Trello, Chrome, Mail, Database, HardDrive } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Integration {
@@ -19,22 +19,30 @@ export default function Integrations() {
   const [integrations, setIntegrations] = useState<Integration[]>([
     {
       id: "1",
-      name: "GitHub",
-      description: "Connect your GitHub repositories",
-      icon: Github,
-      connected: true,
-      category: "Development"
+      name: "Google Drive",
+      description: "Access and upload files from Google Drive",
+      icon: HardDrive,
+      connected: false,
+      category: "Storage"
     },
     {
       id: "2",
-      name: "Slack",
-      description: "Get notifications in Slack",
-      icon: Slack,
-      connected: true,
-      category: "Communication"
+      name: "GitHub",
+      description: "Connect your GitHub repositories",
+      icon: Github,
+      connected: false,
+      category: "Development"
     },
     {
       id: "3",
+      name: "Slack",
+      description: "Get notifications in Slack",
+      icon: Slack,
+      connected: false,
+      category: "Communication"
+    },
+    {
+      id: "4",
       name: "Trello",
       description: "Sync with your Trello boards",
       icon: Trello,
@@ -42,7 +50,7 @@ export default function Integrations() {
       category: "Project Management"
     },
     {
-      id: "4",
+      id: "5",
       name: "Chrome Extension",
       description: "Browser extension integration",
       icon: Chrome,
@@ -50,15 +58,15 @@ export default function Integrations() {
       category: "Tools"
     },
     {
-      id: "5",
+      id: "6",
       name: "Email",
       description: "Email notifications and alerts",
       icon: Mail,
-      connected: true,
+      connected: false,
       category: "Communication"
     },
     {
-      id: "6",
+      id: "7",
       name: "Database",
       description: "External database connection",
       icon: Database,
@@ -67,10 +75,22 @@ export default function Integrations() {
     },
   ]);
 
+  useEffect(() => {
+    const storedConnection = localStorage.getItem("googleDriveConnected");
+    if (storedConnection === "true") {
+      setIntegrations(prev => prev.map(int => 
+        int.id === "1" ? { ...int, connected: true } : int
+      ));
+    }
+  }, []);
+
   const toggleConnection = (id: string) => {
     setIntegrations(integrations.map(integration => {
       if (integration.id === id) {
         const newState = !integration.connected;
+        if (integration.name === "Google Drive") {
+          localStorage.setItem("googleDriveConnected", String(newState));
+        }
         toast({
           title: newState ? "Connected" : "Disconnected",
           description: `${integration.name} has been ${newState ? "connected" : "disconnected"}`,
@@ -114,37 +134,44 @@ export default function Integrations() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {integrations.map((integration) => (
-          <Card key={integration.id} className="hover:shadow-lg transition-all duration-300">
-            <CardHeader>
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="p-3 rounded-lg bg-primary/10">
-                    <integration.icon className="h-6 w-6 text-primary" />
+        {integrations.map((integration) => {
+          const isComingSoon = integration.id !== "1";
+          return (
+            <Card key={integration.id} className="hover:shadow-lg transition-all duration-300">
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="p-3 rounded-lg bg-primary/10">
+                      <integration.icon className="h-6 w-6 text-primary" />
+                    </div>
+                    <div>
+                      <CardTitle className="text-xl">{integration.name}</CardTitle>
+                      <CardDescription>{integration.description}</CardDescription>
+                    </div>
                   </div>
-                  <div>
-                    <CardTitle className="text-xl">{integration.name}</CardTitle>
-                    <CardDescription>{integration.description}</CardDescription>
-                  </div>
+                  <Badge variant={integration.connected ? "default" : isComingSoon ? "outline" : "secondary"}>
+                    {isComingSoon ? "Coming Soon" : integration.connected ? "Connected" : "Available"}
+                  </Badge>
                 </div>
-                <Badge variant={integration.connected ? "default" : "secondary"}>
-                  {integration.connected ? "Connected" : "Available"}
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">{integration.category}</span>
-                <Button
-                  variant={integration.connected ? "outline" : "default"}
-                  onClick={() => toggleConnection(integration.id)}
-                >
-                  {integration.connected ? "Disconnect" : "Connect"}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">{integration.category}</span>
+                  {isComingSoon ? (
+                    <p className="text-sm text-muted-foreground italic">We're working on this! 🚀</p>
+                  ) : (
+                    <Button
+                      variant={integration.connected ? "outline" : "default"}
+                      onClick={() => toggleConnection(integration.id)}
+                    >
+                      {integration.connected ? "Disconnect" : "Connect"}
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
     </div>
   );

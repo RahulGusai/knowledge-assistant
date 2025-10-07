@@ -13,6 +13,8 @@ export default function Branding() {
     primaryColor: "#6366f1",
     secondaryColor: "#c026d3",
     logo: null as string | null,
+    primaryFont: "Inter",
+    secondaryFont: "Georgia",
   });
 
   const handleSave = () => {
@@ -136,6 +138,50 @@ export default function Branding() {
             </CardContent>
           </Card>
 
+          <Card>
+            <CardHeader>
+              <CardTitle>Typography</CardTitle>
+              <CardDescription>Select fonts for your brand</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="primaryFont">Primary Font</Label>
+                  <select
+                    id="primaryFont"
+                    value={settings.primaryFont}
+                    onChange={(e) => setSettings({ ...settings, primaryFont: e.target.value })}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <option value="Inter">Inter</option>
+                    <option value="Roboto">Roboto</option>
+                    <option value="Open Sans">Open Sans</option>
+                    <option value="Lato">Lato</option>
+                    <option value="Poppins">Poppins</option>
+                    <option value="Montserrat">Montserrat</option>
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="secondaryFont">Secondary Font</Label>
+                  <select
+                    id="secondaryFont"
+                    value={settings.secondaryFont}
+                    onChange={(e) => setSettings({ ...settings, secondaryFont: e.target.value })}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <option value="Georgia">Georgia</option>
+                    <option value="Times New Roman">Times New Roman</option>
+                    <option value="Merriweather">Merriweather</option>
+                    <option value="Playfair Display">Playfair Display</option>
+                    <option value="Lora">Lora</option>
+                    <option value="Crimson Text">Crimson Text</option>
+                  </select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           <Button onClick={handleSave} className="w-full">
             <Save className="h-4 w-4 mr-2" />
             Save Changes
@@ -158,23 +204,34 @@ export default function Branding() {
                       <Palette className="h-6 w-6 text-muted-foreground" />
                     </div>
                   )}
-                  <span className="font-bold text-lg">{settings.brandName}</span>
+                  <span className="font-bold text-lg" style={{ fontFamily: settings.primaryFont }}>
+                    {settings.brandName}
+                  </span>
                 </div>
                 
                 <div className="space-y-2">
                   <Button
                     className="w-full"
-                    style={{ backgroundColor: settings.primaryColor }}
+                    style={{ backgroundColor: settings.primaryColor, fontFamily: settings.primaryFont }}
                   >
                     Primary Button
                   </Button>
                   <Button
                     className="w-full"
                     variant="outline"
-                    style={{ borderColor: settings.secondaryColor, color: settings.secondaryColor }}
+                    style={{ borderColor: settings.secondaryColor, color: settings.secondaryColor, fontFamily: settings.secondaryFont }}
                   >
                     Secondary Button
                   </Button>
+                </div>
+                
+                <div className="mt-4 p-3 bg-muted/50 rounded">
+                  <p className="text-sm" style={{ fontFamily: settings.primaryFont }}>
+                    Primary Font: {settings.primaryFont}
+                  </p>
+                  <p className="text-sm mt-1" style={{ fontFamily: settings.secondaryFont }}>
+                    Secondary Font: {settings.secondaryFont}
+                  </p>
                 </div>
               </div>
 

@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Play, StopCircle, Clock, CheckCircle2, XCircle, RefreshCw } from "lucide-react";
+import { Play, StopCircle, Clock, CheckCircle2, XCircle, RefreshCw, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface PipelineRun {
@@ -16,6 +16,7 @@ interface PipelineRun {
 export default function Pipeline() {
   const { toast } = useToast();
   const [isRunning, setIsRunning] = useState(false);
+  const [hasFiles, setHasFiles] = useState(false);
   const [runs, setRuns] = useState<PipelineRun[]>([
     {
       id: "1",
@@ -39,6 +40,27 @@ export default function Pipeline() {
       trigger: "Manual"
     },
   ]);
+
+  useEffect(() => {
+    const checkFiles = () => {
+      const storedFiles = localStorage.getItem("uploadedFiles");
+      if (storedFiles) {
+        const files = JSON.parse(storedFiles);
+        setHasFiles(files.length > 0);
+      } else {
+        setHasFiles(false);
+      }
+    };
+
+    checkFiles();
+    window.addEventListener("storage", checkFiles);
+    const interval = setInterval(checkFiles, 1000);
+
+    return () => {
+      window.removeEventListener("storage", checkFiles);
+      clearInterval(interval);
+    };
+  }, []);
 
   const handleTrigger = () => {
     setIsRunning(true);
@@ -127,6 +149,20 @@ export default function Pipeline() {
                   <Button variant="outline" disabled>
                     <StopCircle className="h-4 w-4 mr-2" />
                     Running...
+                  </Button>
+                </div>
+              ) : !hasFiles ? (
+                <div className="space-y-4">
+                  <AlertCircle className="h-16 w-16 mx-auto text-muted-foreground" />
+                  <div>
+                    <p className="text-xl font-semibold mb-2">No Files Uploaded</p>
+                    <p className="text-sm text-muted-foreground">
+                      Please upload files from the Files tab before triggering the pipeline
+                    </p>
+                  </div>
+                  <Button disabled size="lg" variant="outline">
+                    <Play className="h-4 w-4 mr-2" />
+                    Trigger Pipeline
                   </Button>
                 </div>
               ) : (

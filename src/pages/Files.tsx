@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Upload, File, Trash2, Download } from "lucide-react";
+import { Upload, File, Trash2, Download, HardDrive } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface FileItem {
@@ -17,7 +17,18 @@ export default function Files() {
     { id: "2", name: "image.png", size: "1.2 MB", uploadedAt: "2024-01-14" },
   ]);
   const [isDragging, setIsDragging] = useState(false);
+  const [isGoogleDriveConnected, setIsGoogleDriveConnected] = useState(false);
   const { toast } = useToast();
+
+  useEffect(() => {
+    const storedConnection = localStorage.getItem("googleDriveConnected");
+    setIsGoogleDriveConnected(storedConnection === "true");
+    
+    const storedFiles = localStorage.getItem("uploadedFiles");
+    if (storedFiles) {
+      setFiles(JSON.parse(storedFiles));
+    }
+  }, []);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -51,15 +62,44 @@ export default function Files() {
       uploadedAt: new Date().toISOString().split('T')[0],
     }));
 
-    setFiles([...fileItems, ...files]);
+    const updatedFiles = [...fileItems, ...files];
+    setFiles(updatedFiles);
+    localStorage.setItem("uploadedFiles", JSON.stringify(updatedFiles));
     toast({
       title: "Files uploaded",
       description: `${newFiles.length} file(s) uploaded successfully`,
     });
   };
 
+  const handleGoogleDriveUpload = () => {
+    const mockGoogleDriveFiles = [
+      {
+        id: Math.random().toString(36).substr(2, 9),
+        name: "google-drive-document.docx",
+        size: "1.8 MB",
+        uploadedAt: new Date().toISOString().split('T')[0],
+      },
+      {
+        id: Math.random().toString(36).substr(2, 9),
+        name: "google-drive-presentation.pptx",
+        size: "3.2 MB",
+        uploadedAt: new Date().toISOString().split('T')[0],
+      },
+    ];
+
+    const updatedFiles = [...mockGoogleDriveFiles, ...files];
+    setFiles(updatedFiles);
+    localStorage.setItem("uploadedFiles", JSON.stringify(updatedFiles));
+    toast({
+      title: "Files imported from Google Drive",
+      description: `${mockGoogleDriveFiles.length} file(s) imported successfully`,
+    });
+  };
+
   const handleDelete = (id: string) => {
-    setFiles(files.filter(file => file.id !== id));
+    const updatedFiles = files.filter(file => file.id !== id);
+    setFiles(updatedFiles);
+    localStorage.setItem("uploadedFiles", JSON.stringify(updatedFiles));
     toast({
       title: "File deleted",
       description: "The file has been removed",
@@ -75,42 +115,77 @@ export default function Files() {
         </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Upload Files</CardTitle>
-          <CardDescription>Drag and drop files or click to browse</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div
-            onDragOver={handleDragOver}
-            onDragLeave={handleDragLeave}
-            onDrop={handleDrop}
-            className={`border-2 border-dashed rounded-lg p-12 text-center transition-all duration-300 ${
-              isDragging
-                ? "border-primary bg-primary/5 scale-[1.02]"
-                : "border-border hover:border-primary/50"
-            }`}
-          >
-            <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-            <p className="text-lg font-medium mb-2">Drop files here</p>
-            <p className="text-sm text-muted-foreground mb-4">
-              or click the button below to browse
-            </p>
-            <label htmlFor="file-upload">
-              <Button type="button" onClick={() => document.getElementById('file-upload')?.click()}>
-                Select Files
-              </Button>
-              <input
-                id="file-upload"
-                type="file"
-                multiple
-                className="hidden"
-                onChange={handleFileInput}
-              />
-            </label>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Upload Files</CardTitle>
+            <CardDescription>Drag and drop files or click to browse</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div
+              onDragOver={handleDragOver}
+              onDragLeave={handleDragLeave}
+              onDrop={handleDrop}
+              className={`border-2 border-dashed rounded-lg p-12 text-center transition-all duration-300 ${
+                isDragging
+                  ? "border-primary bg-primary/5 scale-[1.02]"
+                  : "border-border hover:border-primary/50"
+              }`}
+            >
+              <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <p className="text-lg font-medium mb-2">Drop files here</p>
+              <p className="text-sm text-muted-foreground mb-4">
+                or click the button below to browse
+              </p>
+              <label htmlFor="file-upload">
+                <Button type="button" onClick={() => document.getElementById('file-upload')?.click()}>
+                  Select Files
+                </Button>
+                <input
+                  id="file-upload"
+                  type="file"
+                  multiple
+                  className="hidden"
+                  onChange={handleFileInput}
+                />
+              </label>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Google Drive Import</CardTitle>
+            <CardDescription>Import files from your Google Drive</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="border-2 border-dashed rounded-lg p-12 text-center">
+              <HardDrive className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+              <p className="text-lg font-medium mb-2">Google Drive</p>
+              {isGoogleDriveConnected ? (
+                <>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Your Google Drive is connected
+                  </p>
+                  <Button onClick={handleGoogleDriveUpload}>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Import from Drive
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Connect Google Drive in the Integrations tab to import files
+                  </p>
+                  <Button variant="outline" disabled>
+                    Not Connected
+                  </Button>
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       <Card>
         <CardHeader>
