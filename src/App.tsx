@@ -10,6 +10,7 @@ import Files from "./pages/Files";
 import Integrations from "./pages/Integrations";
 import Branding from "./pages/Branding";
 import Pipeline from "./pages/Pipeline";
+import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -21,17 +22,22 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
-          <DashboardLayout>
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/files" element={<Files />} />
-              <Route path="/integrations" element={<Integrations />} />
-              <Route path="/branding" element={<Branding />} />
-              <Route path="/pipeline" element={<Pipeline />} />
-              {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </DashboardLayout>
+          <Routes>
+            <Route path="/auth" element={<Auth />} />
+            <Route path="*" element={
+              <DashboardLayout>
+                <Routes>
+                  <Route path="/" element={<Dashboard />} />
+                  <Route path="/files" element={<Files />} />
+                  <Route path="/integrations" element={<Integrations />} />
+                  <Route path="/branding" element={<Branding />} />
+                  <Route path="/pipeline" element={<Pipeline />} />
+                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </DashboardLayout>
+            } />
+          </Routes>
         </BrowserRouter>
       </TooltipProvider>
     </ThemeProvider>
