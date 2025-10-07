@@ -102,6 +102,7 @@ export default function Integrations() {
   };
 
   const connectedCount = integrations.filter(i => i.connected).length;
+  const availableCount = 1; // Only Google Drive is currently available
 
   return (
     <div className="space-y-8">
@@ -121,13 +122,13 @@ export default function Integrations() {
         </Card>
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-2xl">{integrations.length}</CardTitle>
+            <CardTitle className="text-2xl">{availableCount}</CardTitle>
             <CardDescription>Total Available</CardDescription>
           </CardHeader>
         </Card>
         <Card>
           <CardHeader className="pb-3">
-            <CardTitle className="text-2xl">{integrations.length - connectedCount}</CardTitle>
+            <CardTitle className="text-2xl">{availableCount - connectedCount}</CardTitle>
             <CardDescription>Not Connected</CardDescription>
           </CardHeader>
         </Card>

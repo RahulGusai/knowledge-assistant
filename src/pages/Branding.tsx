@@ -225,13 +225,25 @@ export default function Branding() {
                   </Button>
                 </div>
                 
-                <div className="mt-4 p-3 bg-muted/50 rounded">
-                  <p className="text-sm" style={{ fontFamily: settings.primaryFont }}>
-                    Primary Font: {settings.primaryFont}
-                  </p>
-                  <p className="text-sm mt-1" style={{ fontFamily: settings.secondaryFont }}>
-                    Secondary Font: {settings.secondaryFont}
-                  </p>
+                <div className="mt-4 space-y-3">
+                  <div className="p-4 rounded-lg border bg-card">
+                    <p className="text-xs font-medium text-muted-foreground mb-2">PRIMARY FONT</p>
+                    <p className="text-2xl font-bold" style={{ fontFamily: settings.primaryFont }}>
+                      {settings.primaryFont}
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-1" style={{ fontFamily: settings.primaryFont }}>
+                      The quick brown fox jumps over the lazy dog
+                    </p>
+                  </div>
+                  <div className="p-4 rounded-lg border bg-card">
+                    <p className="text-xs font-medium text-muted-foreground mb-2">SECONDARY FONT</p>
+                    <p className="text-2xl font-bold" style={{ fontFamily: settings.secondaryFont }}>
+                      {settings.secondaryFont}
+                    </p>
+                    <p className="text-sm text-muted-foreground mt-1" style={{ fontFamily: settings.secondaryFont }}>
+                      The quick brown fox jumps over the lazy dog
+                    </p>
+                  </div>
                 </div>
               </div>
 
