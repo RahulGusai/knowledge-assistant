@@ -1,21 +1,40 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Upload, File, Trash2, Download, HardDrive } from "lucide-react";
+import { Upload, File, Trash2, Download, HardDrive, CheckCircle2, XCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/lib/supabase";
+import { Progress } from "@/components/ui/progress";
 
 interface FileItem {
   id: string;
   name: string;
   size: string;
   uploadedAt: string;
+  status: 'uploading' | 'success' | 'failed';
+  progress: number;
+  filePath?: string;
 }
 
+const ALLOWED_FILE_TYPES = {
+  'pdf': 'application/pdf',
+  'doc': 'application/msword',
+  'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'txt': 'text/plain',
+  'csv': 'text/csv'
+};
+
+const getFileExtension = (fileName: string): string => {
+  return fileName.split('.').pop()?.toLowerCase() || '';
+};
+
+const getContentType = (fileName: string): string | null => {
+  const ext = getFileExtension(fileName);
+  return ALLOWED_FILE_TYPES[ext as keyof typeof ALLOWED_FILE_TYPES] || null;
+};
+
 export default function Files() {
-  const [files, setFiles] = useState<FileItem[]>([
-    { id: "1", name: "document.pdf", size: "2.4 MB", uploadedAt: "2024-01-15" },
-    { id: "2", name: "image.png", size: "1.2 MB", uploadedAt: "2024-01-14" },
-  ]);
+  const [files, setFiles] = useState<FileItem[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isGoogleDriveConnected, setIsGoogleDriveConnected] = useState(false);
   const { toast } = useToast();
@@ -23,11 +42,6 @@ export default function Files() {
   useEffect(() => {
     const storedConnection = localStorage.getItem("googleDriveConnected");
     setIsGoogleDriveConnected(storedConnection === "true");
-    
-    const storedFiles = localStorage.getItem("uploadedFiles");
-    if (storedFiles) {
-      setFiles(JSON.parse(storedFiles));
-    }
   }, []);
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -54,42 +68,156 @@ export default function Files() {
     }
   };
 
-  const handleFiles = (newFiles: File[]) => {
+  const uploadFileToStorage = async (file: File, fileItem: FileItem) => {
+    try {
+      // Validate file type
+      const contentType = getContentType(file.name);
+      if (!contentType) {
+        throw new Error(`File type not supported. Only ${Object.keys(ALLOWED_FILE_TYPES).join(', ')} files are allowed.`);
+      }
+
+      // Get JWT token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
+      // Step 1: Get signed URL
+      const signedUrlResponse = await fetch(
+        'https://kcndgryyfmleusefjowx.supabase.co/functions/v1/signed-upload',
+        {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            fileName: file.name,
+            contentType: contentType
+          }),
+        }
+      );
+
+      if (!signedUrlResponse.ok) {
+        throw new Error('Failed to get signed URL');
+      }
+
+      const { uploadUrl, token } = await signedUrlResponse.json();
+
+      // Step 2: Upload file to signed URL
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': contentType,
+        },
+        body: file,
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error('Failed to upload file');
+      }
+
+      // Update file status to success
+      setFiles(prevFiles =>
+        prevFiles.map(f =>
+          f.id === fileItem.id
+            ? { ...f, status: 'success' as const, progress: 100 }
+            : f
+        )
+      );
+
+      toast({
+        title: "Upload successful",
+        description: `${file.name} uploaded successfully`,
+      });
+    } catch (error) {
+      console.error('Upload error:', error);
+      
+      // Update file status to failed
+      setFiles(prevFiles =>
+        prevFiles.map(f =>
+          f.id === fileItem.id
+            ? { ...f, status: 'failed' as const, progress: 0 }
+            : f
+        )
+      );
+
+      toast({
+        title: "Upload failed",
+        description: error instanceof Error ? error.message : 'Failed to upload file',
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleFiles = async (newFiles: File[]) => {
+    // Validate file types first
+    const invalidFiles = newFiles.filter(file => !getContentType(file.name));
+    
+    if (invalidFiles.length > 0) {
+      toast({
+        title: "Invalid file type",
+        description: `Only ${Object.keys(ALLOWED_FILE_TYPES).join(', ')} files are allowed.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Create file items with uploading status
     const fileItems: FileItem[] = newFiles.map((file) => ({
       id: Math.random().toString(36).substr(2, 9),
       name: file.name,
       size: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
       uploadedAt: new Date().toISOString().split('T')[0],
+      status: 'uploading' as const,
+      progress: 0,
     }));
 
-    const updatedFiles = [...fileItems, ...files];
-    setFiles(updatedFiles);
-    localStorage.setItem("uploadedFiles", JSON.stringify(updatedFiles));
-    toast({
-      title: "Files uploaded",
-      description: `${newFiles.length} file(s) uploaded successfully`,
+    // Add files to state immediately
+    setFiles(prevFiles => [...fileItems, ...prevFiles]);
+
+    // Start uploading each file
+    fileItems.forEach((fileItem, index) => {
+      // Simulate progress for UI feedback
+      const progressInterval = setInterval(() => {
+        setFiles(prevFiles =>
+          prevFiles.map(f =>
+            f.id === fileItem.id && f.status === 'uploading'
+              ? { ...f, progress: Math.min(f.progress + 10, 90) }
+              : f
+          )
+        );
+      }, 200);
+
+      // Upload file
+      uploadFileToStorage(newFiles[index], fileItem).finally(() => {
+        clearInterval(progressInterval);
+      });
     });
   };
 
   const handleGoogleDriveUpload = () => {
-    const mockGoogleDriveFiles = [
+    const mockGoogleDriveFiles: FileItem[] = [
       {
         id: Math.random().toString(36).substr(2, 9),
         name: "google-drive-document.docx",
         size: "1.8 MB",
         uploadedAt: new Date().toISOString().split('T')[0],
+        status: 'success',
+        progress: 100,
       },
       {
         id: Math.random().toString(36).substr(2, 9),
         name: "google-drive-presentation.pptx",
         size: "3.2 MB",
         uploadedAt: new Date().toISOString().split('T')[0],
+        status: 'success',
+        progress: 100,
       },
     ];
 
-    const updatedFiles = [...mockGoogleDriveFiles, ...files];
-    setFiles(updatedFiles);
-    localStorage.setItem("uploadedFiles", JSON.stringify(updatedFiles));
+    setFiles(prevFiles => [...mockGoogleDriveFiles, ...prevFiles]);
     toast({
       title: "Files imported from Google Drive",
       description: `${mockGoogleDriveFiles.length} file(s) imported successfully`,
@@ -97,9 +225,7 @@ export default function Files() {
   };
 
   const handleDelete = (id: string) => {
-    const updatedFiles = files.filter(file => file.id !== id);
-    setFiles(updatedFiles);
-    localStorage.setItem("uploadedFiles", JSON.stringify(updatedFiles));
+    setFiles(prevFiles => prevFiles.filter(file => file.id !== id));
     toast({
       title: "File deleted",
       description: "The file has been removed",
@@ -137,6 +263,9 @@ export default function Files() {
               <p className="text-sm text-muted-foreground mb-4">
                 or click the button below to browse
               </p>
+              <p className="text-xs text-muted-foreground mb-4">
+                Supported formats: PDF, DOC, DOCX, TXT, CSV
+              </p>
               <label htmlFor="file-upload">
                 <Button type="button" onClick={() => document.getElementById('file-upload')?.click()}>
                   Select Files
@@ -145,6 +274,7 @@ export default function Files() {
                   id="file-upload"
                   type="file"
                   multiple
+                  accept=".pdf,.doc,.docx,.txt,.csv"
                   className="hidden"
                   onChange={handleFileInput}
                 />
@@ -199,19 +329,41 @@ export default function Files() {
                 key={file.id}
                 className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
               >
-                <div className="flex items-center gap-4">
+                <div className="flex items-center gap-4 flex-1">
                   <File className="h-8 w-8 text-primary" />
-                  <div>
-                    <p className="font-medium">{file.name}</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{file.name}</p>
                     <p className="text-sm text-muted-foreground">
                       {file.size} • {file.uploadedAt}
                     </p>
+                    {file.status === 'uploading' && (
+                      <div className="mt-2">
+                        <Progress value={file.progress} className="h-2" />
+                      </div>
+                    )}
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <Button variant="ghost" size="icon">
-                    <Download className="h-4 w-4" />
-                  </Button>
+                <div className="flex gap-2 items-center ml-4">
+                  {file.status === 'uploading' && (
+                    <span className="text-sm text-muted-foreground">Uploading...</span>
+                  )}
+                  {file.status === 'success' && (
+                    <div className="flex items-center gap-1 text-green-600">
+                      <CheckCircle2 className="h-5 w-5" />
+                      <span className="text-sm">Uploaded</span>
+                    </div>
+                  )}
+                  {file.status === 'failed' && (
+                    <div className="flex items-center gap-1 text-destructive">
+                      <XCircle className="h-5 w-5" />
+                      <span className="text-sm">Failed</span>
+                    </div>
+                  )}
+                  {file.status === 'success' && (
+                    <Button variant="ghost" size="icon">
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  )}
                   <Button
                     variant="ghost"
                     size="icon"
