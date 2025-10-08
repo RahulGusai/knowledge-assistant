@@ -95,7 +95,8 @@ export default function Files() {
           },
           body: JSON.stringify({
             fileName: file.name,
-            contentType: contentType
+            contentType: contentType,
+            folder: session.user.id
           }),
         }
       );
