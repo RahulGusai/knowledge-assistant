@@ -5,6 +5,8 @@ import { Upload, File, Trash2, Download, HardDrive, CheckCircle2, XCircle } from
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 import { Progress } from "@/components/ui/progress";
+import { BUCKET_NAME } from "@/constants/storage";
+import { calculateFileChecksum } from "@/utils/fileHash";
 
 interface FileItem {
   id: string;
@@ -116,6 +118,29 @@ export default function Files() {
 
       if (!uploadResponse.ok) {
         throw new Error('Failed to upload file');
+      }
+
+      // Step 3: Calculate checksum and insert into database
+      const checksum = await calculateFileChecksum(file);
+      const storagePath = `${BUCKET_NAME}/${file.name}`;
+      
+      const { error: dbError } = await supabase
+        .from('files')
+        .insert({
+          uploaded_by: session.user.id,
+          filename: file.name,
+          mime_type: contentType,
+          size_bytes: file.size,
+          source: 'upload',
+          storage_path: storagePath,
+          checksum: checksum,
+          status: 'uploaded',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        });
+
+      if (dbError) {
+        throw new Error(`Failed to save file metadata: ${dbError.message}`);
       }
 
       // Update file status to success
