@@ -24,7 +24,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       <aside className="w-64 bg-sidebar-background border-r border-sidebar-border flex flex-col">
         <div className="p-6 border-b border-sidebar-border flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src={dashboardLogo} alt="RAG Chatbot Dashboard" className="h-10 w-10" />
+            <img src={dashboardLogo} alt="RAG Chatbot Dashboard" className="h-10 w-10 object-contain" style={{ backgroundColor: 'transparent' }} />
             <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
               Admin Dashboard
             </h1>
