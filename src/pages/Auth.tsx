@@ -30,7 +30,9 @@ export default function Auth() {
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
       if (session) {
         navigate("/");
       }
@@ -41,7 +43,7 @@ export default function Auth() {
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!isSupabaseConfigured || !supabase) {
       toast({
         title: "Configuration Required",
@@ -106,9 +108,9 @@ export default function Auth() {
     setLoading(true);
     try {
       const { error } = await supabase.auth.signInWithOAuth({
-        provider: 'github',
+        provider: "github",
         options: {
-          redirectTo: `${window.location.origin}/`,
+          redirectTo: "https://knowledge-assistant.lovable.app/",
         },
       });
 
@@ -129,11 +131,11 @@ export default function Auth() {
       <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-accent/10" />
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent" />
       <div className="absolute inset-0 bg-grid-pattern opacity-[0.02]" />
-      
+
       {/* Floating Orbs */}
       <div className="absolute top-1/4 left-1/4 w-72 h-72 bg-primary/10 rounded-full blur-3xl animate-pulse" />
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-accent/10 rounded-full blur-3xl animate-pulse delay-1000" />
-      
+
       <Card className="w-full max-w-md shadow-2xl border-primary/10 backdrop-blur-sm bg-background/95 animate-scale-in relative z-10">
         <CardHeader className="space-y-3 text-center pb-6">
           <div className="mx-auto w-16 h-16 bg-gradient-to-br from-primary to-primary/50 rounded-2xl flex items-center justify-center mb-2 shadow-lg animate-fade-in">
@@ -152,14 +154,17 @@ export default function Auth() {
           {!isSupabaseConfigured && (
             <Alert className="border-amber-500/50 bg-amber-500/10">
               <AlertDescription className="text-sm">
-                <strong>Setup Required:</strong> Update Supabase credentials in <code className="px-1.5 py-0.5 bg-background/50 rounded">src/lib/supabase.ts</code>
+                <strong>Setup Required:</strong> Update Supabase credentials in{" "}
+                <code className="px-1.5 py-0.5 bg-background/50 rounded">src/lib/supabase.ts</code>
               </AlertDescription>
             </Alert>
           )}
-          
+
           <form onSubmit={handleEmailAuth} className="space-y-5">
             <div className="space-y-2 animate-fade-in">
-              <Label htmlFor="email" className="text-sm font-medium">Email</Label>
+              <Label htmlFor="email" className="text-sm font-medium">
+                Email
+              </Label>
               <Input
                 id="email"
                 type="email"
@@ -171,7 +176,9 @@ export default function Auth() {
               />
             </div>
             <div className="space-y-2 animate-fade-in delay-75">
-              <Label htmlFor="password" className="text-sm font-medium">Password</Label>
+              <Label htmlFor="password" className="text-sm font-medium">
+                Password
+              </Label>
               <Input
                 id="password"
                 type="password"
@@ -182,9 +189,9 @@ export default function Auth() {
                 required
               />
             </div>
-            <Button 
-              type="submit" 
-              className="w-full shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all" 
+            <Button
+              type="submit"
+              className="w-full shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all"
               size="lg"
               disabled={loading}
             >
@@ -197,9 +204,7 @@ export default function Auth() {
               <Separator />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
-                Or continue with
-              </span>
+              <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
             </div>
           </div>
 
@@ -219,9 +224,7 @@ export default function Auth() {
               onClick={() => setIsSignUp(!isSignUp)}
               className="text-primary hover:text-primary/80 font-medium transition-colors story-link"
             >
-              {isSignUp
-                ? "Already have an account? Sign in"
-                : "Don't have an account? Sign up"}
+              {isSignUp ? "Already have an account? Sign in" : "Don't have an account? Sign up"}
             </button>
           </div>
         </CardContent>
