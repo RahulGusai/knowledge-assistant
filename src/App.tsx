@@ -24,19 +24,22 @@ const App = () => (
         <BrowserRouter>
           <Routes>
             <Route path="/auth" element={<Auth />} />
-            <Route path="*" element={
-              <DashboardLayout>
-                <Routes>
-                  <Route path="/" element={<Dashboard />} />
-                  <Route path="/files" element={<Files />} />
-                  <Route path="/integrations" element={<Integrations />} />
-                  <Route path="/branding" element={<Branding />} />
-                  <Route path="/pipeline" element={<Pipeline />} />
-                  {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </DashboardLayout>
-            } />
+            <Route
+              path="*"
+              element={
+                <DashboardLayout>
+                  <Routes>
+                    <Route path="/" element={<Dashboard />} />
+                    <Route path="/files" element={<Files />} />
+                    <Route path="/integrations" element={<Integrations />} />
+                    <Route path="/branding" element={<Branding />} />
+                    <Route path="/pipeline" element={<Pipeline />} />
+                    {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                    <Route path="*" element={<NotFound />} />
+                  </Routes>
+                </DashboardLayout>
+              }
+            />
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
