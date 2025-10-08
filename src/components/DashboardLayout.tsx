@@ -4,10 +4,10 @@ import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
 import { FileUp, Puzzle, Palette, Play, LayoutDashboard, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import dashboardLogo from "@/assets/dashboard-logo.png";
+import dashboardLogo from "@/assets/brain-logo.png";
 
 const navigation = [
-  { name: "Dashboard", href: "/", icon: LayoutDashboard },
+  { name: "Dashboard", href: "/home", icon: LayoutDashboard },
   { name: "Files", href: "/files", icon: FileUp },
   { name: "Integrations", href: "/integrations", icon: Puzzle },
   { name: "Branding", href: "/branding", icon: Palette },
@@ -24,7 +24,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
       <aside className="w-64 bg-sidebar-background border-r border-sidebar-border flex flex-col">
         <div className="p-6 border-b border-sidebar-border flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src={dashboardLogo} alt="RAG Chatbot Dashboard" className="h-10 w-10 object-contain" style={{ backgroundColor: 'transparent' }} />
+            <img src={dashboardLogo} alt="RAG Chatbot Dashboard" className="h-10 w-10 object-contain bg-background rounded-md" />
             <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
               Admin Dashboard
             </h1>
