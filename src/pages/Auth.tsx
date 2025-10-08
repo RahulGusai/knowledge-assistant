@@ -4,29 +4,101 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Apple, Chrome, Mail } from "lucide-react";
+import { Github, Mail } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/lib/supabase";
+import { useToast } from "@/hooks/use-toast";
+import { useEffect } from "react";
 
 export default function Auth() {
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    // Check if user is already logged in
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        navigate("/");
+      }
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session) {
+        navigate("/");
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement Supabase authentication
-    console.log(isSignUp ? "Sign up" : "Sign in", { email, password });
+    setLoading(true);
+
+    try {
+      if (isSignUp) {
+        const { error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: `${window.location.origin}/`,
+          },
+        });
+
+        if (error) throw error;
+
+        toast({
+          title: "Success!",
+          description: "Check your email to confirm your account.",
+        });
+      } else {
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (error) throw error;
+
+        toast({
+          title: "Welcome back!",
+          description: "You've successfully signed in.",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "An error occurred during authentication.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleGoogleAuth = async () => {
-    // TODO: Implement Google OAuth with Supabase
-    console.log("Sign in with Google");
-  };
+  const handleGithubAuth = async () => {
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'github',
+        options: {
+          redirectTo: `${window.location.origin}/`,
+        },
+      });
 
-  const handleAppleAuth = async () => {
-    // TODO: Implement Apple OAuth with Supabase
-    console.log("Sign in with Apple");
+      if (error) throw error;
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "An error occurred during GitHub authentication.",
+        variant: "destructive",
+      });
+      setLoading(false);
+    }
   };
 
   return (
@@ -80,8 +152,13 @@ export default function Auth() {
                 required
               />
             </div>
-            <Button type="submit" className="w-full shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all" size="lg">
-              {isSignUp ? "Sign up with Email" : "Sign in with Email"}
+            <Button 
+              type="submit" 
+              className="w-full shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all" 
+              size="lg"
+              disabled={loading}
+            >
+              {loading ? "Loading..." : isSignUp ? "Sign up with Email" : "Sign in with Email"}
             </Button>
           </form>
 
@@ -96,24 +173,15 @@ export default function Auth() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <Button
-              variant="outline"
-              onClick={handleGoogleAuth}
-              className="w-full hover-scale border-primary/20 hover:border-primary/40 transition-all"
-            >
-              <Chrome className="mr-2 h-4 w-4" />
-              Google
-            </Button>
-            <Button
-              variant="outline"
-              onClick={handleAppleAuth}
-              className="w-full hover-scale border-primary/20 hover:border-primary/40 transition-all"
-            >
-              <Apple className="mr-2 h-4 w-4" />
-              Apple
-            </Button>
-          </div>
+          <Button
+            variant="outline"
+            onClick={handleGithubAuth}
+            className="w-full hover-scale border-primary/20 hover:border-primary/40 transition-all"
+            disabled={loading}
+          >
+            <Github className="mr-2 h-4 w-4" />
+            Sign in with GitHub
+          </Button>
 
           <div className="text-center text-sm pt-2">
             <button
