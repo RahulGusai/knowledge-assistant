@@ -6,9 +6,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Separator } from "@/components/ui/separator";
 import { Github, Mail } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/lib/supabase";
+import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function Auth() {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -19,6 +20,8 @@ export default function Auth() {
   const { toast } = useToast();
 
   useEffect(() => {
+    if (!isSupabaseConfigured || !supabase) return;
+
     // Check if user is already logged in
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
@@ -38,6 +41,16 @@ export default function Auth() {
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!isSupabaseConfigured || !supabase) {
+      toast({
+        title: "Configuration Required",
+        description: "Please configure your Supabase credentials in src/lib/supabase.ts",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -81,6 +94,15 @@ export default function Auth() {
   };
 
   const handleGithubAuth = async () => {
+    if (!isSupabaseConfigured || !supabase) {
+      toast({
+        title: "Configuration Required",
+        description: "Please configure your Supabase credentials in src/lib/supabase.ts",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       const { error } = await supabase.auth.signInWithOAuth({
@@ -127,6 +149,14 @@ export default function Auth() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
+          {!isSupabaseConfigured && (
+            <Alert className="border-amber-500/50 bg-amber-500/10">
+              <AlertDescription className="text-sm">
+                <strong>Setup Required:</strong> Update Supabase credentials in <code className="px-1.5 py-0.5 bg-background/50 rounded">src/lib/supabase.ts</code>
+              </AlertDescription>
+            </Alert>
+          )}
+          
           <form onSubmit={handleEmailAuth} className="space-y-5">
             <div className="space-y-2 animate-fade-in">
               <Label htmlFor="email" className="text-sm font-medium">Email</Label>
