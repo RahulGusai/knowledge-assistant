@@ -110,7 +110,7 @@ export default function Auth() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "github",
         options: {
-          redirectTo: "https://knowledge-assistant.lovable.app/",
+          redirectTo: `https://knowledge-assistant.lovable.app/`,
         },
       });
 
