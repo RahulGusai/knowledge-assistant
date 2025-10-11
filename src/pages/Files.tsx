@@ -145,6 +145,7 @@ export default function Files() {
           storage_path: storagePath,
           checksum: checksum,
           status: 'uploaded',
+          workspace_id: '37926ce6-9757-4667-bf16-b438d6bc95b1',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
