@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { Progress } from "@/components/ui/progress";
 import { BUCKET_NAME } from "@/constants/storage";
 import { calculateFileChecksum } from "@/utils/fileHash";
+import { usePipeline } from "@/contexts/PipelineContext";
 
 interface FileItem {
   id: string;
@@ -40,11 +41,19 @@ export default function Files() {
   const [isDragging, setIsDragging] = useState(false);
   const [isGoogleDriveConnected, setIsGoogleDriveConnected] = useState(false);
   const { toast } = useToast();
+  const { addFileId, setTriggerBy } = usePipeline();
 
   useEffect(() => {
     const storedConnection = localStorage.getItem("googleDriveConnected");
     setIsGoogleDriveConnected(storedConnection === "true");
-  }, []);
+    
+    // Set trigger_by user ID
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setTriggerBy(session.user.id);
+      }
+    });
+  }, [setTriggerBy]);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -125,7 +134,7 @@ export default function Files() {
       const checksum = await calculateFileChecksum(file);
       const storagePath = `${BUCKET_NAME}/${file.name}`;
       
-      const { error: dbError } = await supabase
+      const { data: insertedFile, error: dbError } = await supabase
         .from('files')
         .insert({
           uploaded_by: session.user.id,
@@ -138,10 +147,17 @@ export default function Files() {
           status: 'uploaded',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-        });
+        })
+        .select('id')
+        .single();
 
       if (dbError) {
         throw new Error(`Failed to save file metadata: ${dbError.message}`);
+      }
+
+      // Add file ID to pipeline context
+      if (insertedFile?.id) {
+        addFileId(insertedFile.id);
       }
 
       // Update file status to success

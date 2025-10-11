@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { Play, StopCircle, Clock, CheckCircle2, XCircle, RefreshCw, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { usePipeline } from "@/contexts/PipelineContext";
 
 interface PipelineRun {
   id: string;
@@ -15,55 +17,26 @@ interface PipelineRun {
 
 export default function Pipeline() {
   const { toast } = useToast();
+  const { fileIds, workspaceId, triggerBy } = usePipeline();
   const [isRunning, setIsRunning] = useState(false);
-  const [hasFiles, setHasFiles] = useState(false);
-  const [runs, setRuns] = useState<PipelineRun[]>([
-    {
-      id: "1",
-      status: "success",
-      startTime: "2024-01-15 14:30:00",
-      duration: "2m 34s",
-      trigger: "Manual"
-    },
-    {
-      id: "2",
-      status: "success",
-      startTime: "2024-01-15 10:15:00",
-      duration: "2m 18s",
-      trigger: "Scheduled"
-    },
-    {
-      id: "3",
-      status: "failed",
-      startTime: "2024-01-14 16:45:00",
-      duration: "1m 45s",
-      trigger: "Manual"
-    },
-  ]);
+  const [progress, setProgress] = useState(0);
+  const [progressMessage, setProgressMessage] = useState("");
+  const [runs, setRuns] = useState<PipelineRun[]>([]);
 
-  useEffect(() => {
-    const checkFiles = () => {
-      const storedFiles = localStorage.getItem("uploadedFiles");
-      if (storedFiles) {
-        const files = JSON.parse(storedFiles);
-        setHasFiles(files.length > 0);
-      } else {
-        setHasFiles(false);
-      }
-    };
+  const handleTrigger = async () => {
+    // Check if files are available
+    if (fileIds.length === 0) {
+      toast({
+        title: "Cannot run pipeline",
+        description: "Please upload files before triggering the pipeline",
+        variant: "destructive",
+      });
+      return;
+    }
 
-    checkFiles();
-    window.addEventListener("storage", checkFiles);
-    const interval = setInterval(checkFiles, 1000);
-
-    return () => {
-      window.removeEventListener("storage", checkFiles);
-      clearInterval(interval);
-    };
-  }, []);
-
-  const handleTrigger = () => {
     setIsRunning(true);
+    setProgress(0);
+    setProgressMessage("Initializing pipeline...");
     
     const newRun: PipelineRun = {
       id: Date.now().toString(),
@@ -74,24 +47,62 @@ export default function Pipeline() {
 
     setRuns([newRun, ...runs]);
 
-    toast({
-      title: "Pipeline triggered",
-      description: "The pipeline is now running",
-    });
+    try {
+      // Prepare payload
+      const payload = {
+        file_ids: fileIds,
+        workspace_id: workspaceId,
+        trigger_by: triggerBy,
+      };
 
-    // Simulate pipeline completion
-    setTimeout(() => {
+      setProgressMessage("Sending request to pipeline...");
+      setProgress(20);
+
+      // Make API call
+      const response = await fetch('https://knowledge-assistant.app.n8n.cloud/webhook-test/trigger-pipeline', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          // 'Authorization': `Bearer ${token}`, // TODO: Add token when available
+        },
+        body: JSON.stringify(payload),
+      });
+
+      setProgress(60);
+      setProgressMessage("Processing pipeline response...");
+
+      const result = await response.json();
+
+      setProgress(100);
+
+      // Check success flag
+      if (result.success === true) {
+        setIsRunning(false);
+        setRuns(prevRuns => prevRuns.map(run => 
+          run.id === newRun.id 
+            ? { ...run, status: "success" as const, duration: "Completed" }
+            : run
+        ));
+        toast({
+          title: "Pipeline completed successfully",
+          description: "The pipeline ran successfully",
+        });
+      } else {
+        throw new Error(result.message || 'Pipeline execution failed');
+      }
+    } catch (error) {
       setIsRunning(false);
       setRuns(prevRuns => prevRuns.map(run => 
         run.id === newRun.id 
-          ? { ...run, status: "success" as const, duration: "2m 15s" }
+          ? { ...run, status: "failed" as const, duration: "Failed" }
           : run
       ));
       toast({
-        title: "Pipeline completed",
-        description: "The pipeline ran successfully",
+        title: "Pipeline failed",
+        description: error instanceof Error ? error.message : "Failed to run pipeline",
+        variant: "destructive",
       });
-    }, 5000);
+    }
   };
 
   const getStatusIcon = (status: PipelineRun["status"]) => {
@@ -142,16 +153,20 @@ export default function Pipeline() {
                   <RefreshCw className="h-16 w-16 mx-auto text-primary animate-spin" />
                   <div>
                     <p className="text-xl font-semibold mb-2">Pipeline Running</p>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-muted-foreground mb-4">
                       Please wait while the pipeline executes...
                     </p>
+                    <div className="max-w-md mx-auto space-y-2">
+                      <Progress value={progress} className="h-2" />
+                      <p className="text-xs text-muted-foreground">{progressMessage}</p>
+                    </div>
                   </div>
                   <Button variant="outline" disabled>
                     <StopCircle className="h-4 w-4 mr-2" />
                     Running...
                   </Button>
                 </div>
-              ) : !hasFiles ? (
+              ) : fileIds.length === 0 ? (
                 <div className="space-y-4">
                   <AlertCircle className="h-16 w-16 mx-auto text-muted-foreground" />
                   <div>
@@ -171,7 +186,7 @@ export default function Pipeline() {
                   <div>
                     <p className="text-xl font-semibold mb-2">Ready to Run</p>
                     <p className="text-sm text-muted-foreground">
-                      Click the button below to trigger the pipeline
+                      {fileIds.length} file(s) ready to process
                     </p>
                   </div>
                   <Button onClick={handleTrigger} size="lg">
