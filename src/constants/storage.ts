@@ -1,1 +1,1 @@
-export const BUCKET_NAME = 'knowledge_assistant';
+export const BUCKET_NAME = "knowledge-assistant";
