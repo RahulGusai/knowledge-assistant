@@ -132,7 +132,7 @@ export default function Files() {
 
       // Step 3: Calculate checksum and insert into database
       const checksum = await calculateFileChecksum(file);
-      const storagePath = `${BUCKET_NAME}/${file.name}`;
+      const storagePath = `${session.user.id}/${file.name}`;
       
       const { data: insertedFile, error: dbError } = await supabase
         .from('files')
