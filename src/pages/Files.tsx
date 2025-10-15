@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase";
 import { Progress } from "@/components/ui/progress";
 import { calculateFileChecksum } from "@/utils/fileHash";
 import { usePipeline } from "@/contexts/PipelineContext";
+import { BUCKET_NAME } from "@/constants/storage";
 
 interface UploadingFile {
   id: string;
@@ -231,7 +232,25 @@ export default function Files() {
 
   const handleDelete = async (id: string) => {
     try {
-      const { error } = await supabase
+      // Get current user session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
+      // Get file details before deletion
+      const { data: fileData, error: fetchError } = await supabase
+        .from('files')
+        .select('filename, storage_path')
+        .eq('id', id)
+        .single();
+
+      if (fetchError || !fileData) {
+        throw new Error('File not found');
+      }
+
+      // Step 1: Mark file as deleted in database
+      const { error: updateError } = await supabase
         .from('files')
         .update({ 
           is_deleted: true,
@@ -239,21 +258,45 @@ export default function Files() {
         })
         .eq('id', id);
 
-      if (error) throw error;
+      if (updateError) {
+        throw new Error(`Database update failed: ${updateError.message}`);
+      }
+
+      // Step 2: Delete file from storage bucket
+      const storagePath = fileData.storage_path || `${session.user.id}/${fileData.filename}`;
+      const { error: storageError } = await supabase
+        .storage
+        .from(BUCKET_NAME)
+        .remove([storagePath]);
+
+      if (storageError) {
+        // Rollback database update if storage deletion fails
+        await supabase
+          .from('files')
+          .update({ 
+            is_deleted: false,
+            deleted_at: null
+          })
+          .eq('id', id);
+
+        throw new Error(`Storage deletion failed: ${storageError.message}`);
+      }
 
       // Refresh files from context
       const { fetchFiles } = usePipeline();
       await fetchFiles();
 
       toast({
-        title: "File deleted",
-        description: "The file has been removed",
+        title: "File deleted successfully",
+        description: `${fileData.filename} has been removed from storage`,
       });
     } catch (error) {
+      console.error('Delete error:', error);
       toast({
         title: "Delete failed",
-        description: error instanceof Error ? error.message : 'Failed to delete file',
+        description: error instanceof Error ? error.message : 'Failed to delete file. Please try again.',
         variant: "destructive",
+        duration: 5000,
       });
     }
   };
