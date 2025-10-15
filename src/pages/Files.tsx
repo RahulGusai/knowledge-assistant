@@ -237,14 +237,9 @@ export default function Files() {
         throw new Error("Not authenticated");
       }
 
-      // Get file details before deletion
-      const { data: fileData, error: fetchError } = await supabase
-        .from("files")
-        .select("filename, storage_path")
-        .eq("id", id)
-        .single();
-
-      if (fetchError || !fileData) {
+      // Get file details from context
+      const fileData = files.find((f) => f.id === id);
+      if (!fileData) {
         throw new Error("File not found");
       }
 
@@ -263,11 +258,15 @@ export default function Files() {
 
       // Step 2: Delete file from storage bucket
       const storagePath = fileData.storage_path || `${session.user.id}/${fileData.filename}`;
-      console.log(storagePath);
+      console.log("Attempting to delete file from storage:", storagePath, "Bucket:", BUCKET_NAME);
 
-      const { error: storageError } = await supabase.storage.from(BUCKET_NAME).remove([storagePath]);
+      const { data: deleteData, error: storageError } = await supabase.storage.from(BUCKET_NAME).remove([storagePath]);
+
+      console.log("Storage deletion result:", { deleteData, storageError });
 
       if (storageError) {
+        console.error("Storage deletion error details:", storageError);
+        
         // Rollback database update if storage deletion fails
         await supabase
           .from("files")
