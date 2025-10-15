@@ -22,10 +22,12 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     <div className="flex min-h-screen w-full bg-background">
       {/* Sidebar */}
       <aside className="w-64 bg-sidebar-background border-r border-sidebar-border flex flex-col">
-        <div className="p-6 border-b border-sidebar-border flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img src={dashboardLogo} alt="RAG Chatbot Dashboard" className="h-10 w-10 object-contain" />
-            <h1 className="text-xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+        <div className="px-6 py-5 border-b border-sidebar-border">
+          <div className="flex items-center gap-3.5 mb-4">
+            <div className="flex-shrink-0">
+              <img src={dashboardLogo} alt="RAG Chatbot Dashboard" className="h-11 w-11 object-contain" />
+            </div>
+            <h1 className="font-inter text-xl font-semibold tracking-tight text-foreground leading-tight">
               Admin Dashboard
             </h1>
           </div>
@@ -33,7 +35,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             variant="ghost"
             size="icon"
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="h-8 w-8"
+            className="h-8 w-8 absolute top-5 right-4"
           >
             <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
             <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
