@@ -16,14 +16,14 @@ interface UploadingFile {
 }
 
 const ALLOWED_FILE_TYPES = {
-  'pdf': 'application/pdf',
-  'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  'txt': 'text/plain',
-  'csv': 'text/csv'
+  pdf: "application/pdf",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  txt: "text/plain",
+  csv: "text/csv",
 };
 
 const getFileExtension = (fileName: string): string => {
-  return fileName.split('.').pop()?.toLowerCase() || '';
+  return fileName.split(".").pop()?.toLowerCase() || "";
 };
 
 const getContentType = (fileName: string): string | null => {
@@ -41,7 +41,7 @@ export default function Files() {
   useEffect(() => {
     const storedConnection = localStorage.getItem("googleDriveConnected");
     setIsGoogleDriveConnected(storedConnection === "true");
-    
+
     // Set trigger_by user ID
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
@@ -62,7 +62,7 @@ export default function Files() {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setIsDragging(false);
-    
+
     const droppedFiles = Array.from(e.dataTransfer.files);
     handleFiles(droppedFiles);
   };
@@ -79,72 +79,73 @@ export default function Files() {
       // Validate file type
       const contentType = getContentType(file.name);
       if (!contentType) {
-        throw new Error(`File type not supported. Only ${Object.keys(ALLOWED_FILE_TYPES).join(', ')} files are allowed.`);
+        throw new Error(
+          `File type not supported. Only ${Object.keys(ALLOWED_FILE_TYPES).join(", ")} files are allowed.`,
+        );
       }
 
       // Get JWT token
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session) {
-        throw new Error('Not authenticated');
+        throw new Error("Not authenticated");
       }
 
       // Step 1: Get signed URL
-      const signedUrlResponse = await fetch(
-        'https://kcndgryyfmleusefjowx.supabase.co/functions/v1/signed-upload',
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${session.access_token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            fileName: file.name,
-            contentType: contentType,
-            folder: session.user.id
-          }),
-        }
-      );
+      const signedUrlResponse = await fetch("https://kcndgryyfmleusefjowx.supabase.co/functions/v1/signed-upload", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          fileName: file.name,
+          contentType: contentType,
+          folder: session.user.id,
+        }),
+      });
 
       if (!signedUrlResponse.ok) {
-        throw new Error('Failed to get signed URL');
+        throw new Error("Failed to get signed URL");
       }
 
       const { uploadUrl, token } = await signedUrlResponse.json();
 
       // Step 2: Upload file to signed URL
       const uploadResponse = await fetch(uploadUrl, {
-        method: 'PUT',
+        method: "PUT",
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': contentType,
+          Authorization: `Bearer ${token}`,
+          "Content-Type": contentType,
         },
         body: file,
       });
 
       if (!uploadResponse.ok) {
-        throw new Error('Failed to upload file');
+        throw new Error("Failed to upload file");
       }
 
       // Step 3: Calculate checksum and insert into database
       const checksum = await calculateFileChecksum(file);
       const storagePath = `${session.user.id}/${file.name}`;
-      
+
       const { data: insertedFile, error: dbError } = await supabase
-        .from('files')
+        .from("files")
         .insert({
           uploaded_by: session.user.id,
           filename: file.name,
           mime_type: contentType,
           size_bytes: file.size,
-          source: 'upload',
+          source: "upload",
           storage_path: storagePath,
           checksum: checksum,
-          status: 'uploaded',
-          workspace_id: '37926ce6-9757-4667-bf16-b438d6bc95b1',
+          status: "uploaded",
+          workspace_id: "37926ce6-9757-4667-bf16-b438d6bc95b1",
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })
-        .select('*')
+        .select("*")
         .single();
 
       if (dbError) {
@@ -158,21 +159,21 @@ export default function Files() {
       }
 
       // Remove from uploading files
-      setUploadingFiles(prev => prev.filter(f => f.id !== uploadingFileId));
+      setUploadingFiles((prev) => prev.filter((f) => f.id !== uploadingFileId));
 
       toast({
         title: "Upload successful",
         description: `${file.name} uploaded successfully`,
       });
     } catch (error) {
-      console.error('Upload error:', error);
-      
+      console.error("Upload error:", error);
+
       // Remove from uploading files
-      setUploadingFiles(prev => prev.filter(f => f.id !== uploadingFileId));
+      setUploadingFiles((prev) => prev.filter((f) => f.id !== uploadingFileId));
 
       toast({
         title: "Upload failed",
-        description: error instanceof Error ? error.message : 'Failed to upload file',
+        description: error instanceof Error ? error.message : "Failed to upload file",
         variant: "destructive",
         duration: 5000,
       });
@@ -181,12 +182,12 @@ export default function Files() {
 
   const handleFiles = async (newFiles: File[]) => {
     // Validate file types first
-    const invalidFiles = newFiles.filter(file => !getContentType(file.name));
-    
+    const invalidFiles = newFiles.filter((file) => !getContentType(file.name));
+
     if (invalidFiles.length > 0) {
       toast({
         title: "Invalid file type",
-        description: `Only ${Object.keys(ALLOWED_FILE_TYPES).join(', ')} files are allowed.`,
+        description: `Only ${Object.keys(ALLOWED_FILE_TYPES).join(", ")} files are allowed.`,
         variant: "destructive",
         duration: 5000,
       });
@@ -201,18 +202,14 @@ export default function Files() {
     }));
 
     // Add to uploading files state
-    setUploadingFiles(prev => [...uploadingFileItems, ...prev]);
+    setUploadingFiles((prev) => [...uploadingFileItems, ...prev]);
 
     // Start uploading each file
     uploadingFileItems.forEach((fileItem, index) => {
       // Simulate progress for UI feedback
       const progressInterval = setInterval(() => {
-        setUploadingFiles(prev =>
-          prev.map(f =>
-            f.id === fileItem.id
-              ? { ...f, progress: Math.min(f.progress + 10, 90) }
-              : f
-          )
+        setUploadingFiles((prev) =>
+          prev.map((f) => (f.id === fileItem.id ? { ...f, progress: Math.min(f.progress + 10, 90) } : f)),
         );
       }, 200);
 
@@ -233,30 +230,32 @@ export default function Files() {
   const handleDelete = async (id: string) => {
     try {
       // Get current user session
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session) {
-        throw new Error('Not authenticated');
+        throw new Error("Not authenticated");
       }
 
       // Get file details before deletion
       const { data: fileData, error: fetchError } = await supabase
-        .from('files')
-        .select('filename, storage_path')
-        .eq('id', id)
+        .from("files")
+        .select("filename, storage_path")
+        .eq("id", id)
         .single();
 
       if (fetchError || !fileData) {
-        throw new Error('File not found');
+        throw new Error("File not found");
       }
 
       // Step 1: Mark file as deleted in database
       const { error: updateError } = await supabase
-        .from('files')
-        .update({ 
+        .from("files")
+        .update({
           is_deleted: true,
-          deleted_at: new Date().toISOString()
+          deleted_at: new Date().toISOString(),
         })
-        .eq('id', id);
+        .eq("id", id);
 
       if (updateError) {
         throw new Error(`Database update failed: ${updateError.message}`);
@@ -264,20 +263,19 @@ export default function Files() {
 
       // Step 2: Delete file from storage bucket
       const storagePath = fileData.storage_path || `${session.user.id}/${fileData.filename}`;
-      const { error: storageError } = await supabase
-        .storage
-        .from(BUCKET_NAME)
-        .remove([storagePath]);
+      console.log(storagePath);
+
+      const { error: storageError } = await supabase.storage.from(BUCKET_NAME).remove([storagePath]);
 
       if (storageError) {
         // Rollback database update if storage deletion fails
         await supabase
-          .from('files')
-          .update({ 
+          .from("files")
+          .update({
             is_deleted: false,
-            deleted_at: null
+            deleted_at: null,
           })
-          .eq('id', id);
+          .eq("id", id);
 
         throw new Error(`Storage deletion failed: ${storageError.message}`);
       }
@@ -290,10 +288,10 @@ export default function Files() {
         description: `${fileData.filename} has been removed from storage`,
       });
     } catch (error) {
-      console.error('Delete error:', error);
+      console.error("Delete error:", error);
       toast({
         title: "Delete failed",
-        description: error instanceof Error ? error.message : 'Failed to delete file. Please try again.',
+        description: error instanceof Error ? error.message : "Failed to delete file. Please try again.",
         variant: "destructive",
         duration: 5000,
       });
@@ -304,9 +302,7 @@ export default function Files() {
     <div className="space-y-8">
       <div>
         <h1 className="text-4xl font-bold mb-2">File Management</h1>
-        <p className="text-muted-foreground text-lg">
-          Upload and manage your files
-        </p>
+        <p className="text-muted-foreground text-lg">Upload and manage your files</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -321,21 +317,15 @@ export default function Files() {
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
               className={`border-2 border-dashed rounded-lg p-12 text-center transition-all duration-300 ${
-                isDragging
-                  ? "border-primary bg-primary/5 scale-[1.02]"
-                  : "border-border hover:border-primary/50"
+                isDragging ? "border-primary bg-primary/5 scale-[1.02]" : "border-border hover:border-primary/50"
               }`}
             >
               <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
               <p className="text-lg font-medium mb-2">Drop files here</p>
-              <p className="text-sm text-muted-foreground mb-4">
-                or click the button below to browse
-              </p>
-              <p className="text-xs text-muted-foreground mb-4">
-                Supported formats: PDF, DOCX, TXT, CSV
-              </p>
+              <p className="text-sm text-muted-foreground mb-4">or click the button below to browse</p>
+              <p className="text-xs text-muted-foreground mb-4">Supported formats: PDF, DOCX, TXT, CSV</p>
               <label htmlFor="file-upload">
-                <Button type="button" onClick={() => document.getElementById('file-upload')?.click()}>
+                <Button type="button" onClick={() => document.getElementById("file-upload")?.click()}>
                   Select Files
                 </Button>
                 <input
@@ -362,9 +352,7 @@ export default function Files() {
               <p className="text-lg font-medium mb-2">Google Drive</p>
               {isGoogleDriveConnected ? (
                 <>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Your Google Drive is connected
-                  </p>
+                  <p className="text-sm text-muted-foreground mb-4">Your Google Drive is connected</p>
                   <Button onClick={handleGoogleDriveUpload}>
                     <Upload className="h-4 w-4 mr-2" />
                     Import from Drive
@@ -392,9 +380,7 @@ export default function Files() {
         </CardHeader>
         <CardContent>
           {files.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              No files uploaded yet
-            </div>
+            <div className="text-center py-8 text-muted-foreground">No files uploaded yet</div>
           ) : (
             <div className="space-y-2">
               {files.map((file) => (
@@ -407,7 +393,8 @@ export default function Files() {
                     <div className="flex-1 min-w-0">
                       <p className="font-medium truncate">{file.filename}</p>
                       <p className="text-sm text-muted-foreground">
-                        {(file.size_bytes / 1024 / 1024).toFixed(2)} MB • {new Date(file.created_at).toLocaleDateString()}
+                        {(file.size_bytes / 1024 / 1024).toFixed(2)} MB •{" "}
+                        {new Date(file.created_at).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
@@ -415,11 +402,7 @@ export default function Files() {
                     <Button variant="ghost" size="icon">
                       <Download className="h-4 w-4" />
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDelete(file.id)}
-                    >
+                    <Button variant="ghost" size="icon" onClick={() => handleDelete(file.id)}>
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
