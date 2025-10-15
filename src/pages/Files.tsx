@@ -36,7 +36,7 @@ export default function Files() {
   const [isDragging, setIsDragging] = useState(false);
   const [isGoogleDriveConnected, setIsGoogleDriveConnected] = useState(false);
   const { toast } = useToast();
-  const { addFileId, setTriggerBy, files, addFile } = usePipeline();
+  const { addFileId, setTriggerBy, files, addFile, fetchFiles } = usePipeline();
 
   useEffect(() => {
     const storedConnection = localStorage.getItem("googleDriveConnected");
@@ -283,7 +283,6 @@ export default function Files() {
       }
 
       // Refresh files from context
-      const { fetchFiles } = usePipeline();
       await fetchFiles();
 
       toast({
