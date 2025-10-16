@@ -16,7 +16,10 @@ export default function Assistant() {
       <ChatAssistant
         brandName={settings.brandName}
         primaryColor={settings.primaryColor}
+        secondaryColor={settings.secondaryColor}
         logo={settings.logo}
+        primaryFont={settings.primaryFont}
+        secondaryFont={settings.secondaryFont}
       />
     </div>
   );

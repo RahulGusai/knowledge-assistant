@@ -34,9 +34,9 @@ export default function Branding() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-4xl font-bold mb-2">Branding</h1>
+        <h1 className="text-4xl font-bold mb-2">Assistant Branding</h1>
         <p className="text-muted-foreground text-lg">
-          Customize your brand identity and appearance
+          Customize your assistant's brand identity and appearance
         </p>
       </div>
 

@@ -17,13 +17,19 @@ interface Message {
 interface ChatAssistantProps {
   brandName?: string;
   primaryColor?: string;
+  secondaryColor?: string;
   logo?: string | null;
+  primaryFont?: string;
+  secondaryFont?: string;
 }
 
 export default function ChatAssistant({
   brandName = "Knowledge Assistant",
   primaryColor = "#6366f1",
+  secondaryColor = "#c026d3",
   logo = null,
+  primaryFont = "Inter",
+  secondaryFont = "Georgia",
 }: ChatAssistantProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -79,8 +85,8 @@ export default function ChatAssistant({
         <div className="flex items-center gap-3">
           <img src={logo || brainLogo} alt={brandName} className="h-10 w-10 object-contain rounded" />
           <div>
-            <h2 className="font-satoshi text-lg font-semibold">{brandName}</h2>
-            <p className="text-sm text-muted-foreground">Ask me anything about your knowledge base</p>
+            <h2 className="text-lg font-semibold" style={{ fontFamily: primaryFont }}>{brandName}</h2>
+            <p className="text-sm text-muted-foreground" style={{ fontFamily: secondaryFont }}>Ask me anything about your knowledge base</p>
           </div>
         </div>
       </Card>
@@ -96,8 +102,8 @@ export default function ChatAssistant({
                 className="h-16 w-16 object-contain rounded-2xl animate-pulse" 
               />
               <div className="space-y-2">
-                <h3 className="font-satoshi text-xl font-semibold">Start a conversation</h3>
-                <p className="text-muted-foreground max-w-md">
+                <h3 className="text-xl font-semibold" style={{ fontFamily: primaryFont }}>Start a conversation</h3>
+                <p className="text-muted-foreground max-w-md" style={{ fontFamily: secondaryFont }}>
                   Ask questions about your documents, files, and knowledge base. I'm here to help!
                 </p>
               </div>
@@ -144,7 +150,7 @@ export default function ChatAssistant({
                     )}
                     style={message.role === "user" ? { backgroundColor: primaryColor } : undefined}
                   >
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ fontFamily: message.role === "user" ? primaryFont : secondaryFont }}>{message.content}</p>
                     <p
                       className={cn(
                         "text-xs mt-2",
