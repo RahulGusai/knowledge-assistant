@@ -27,8 +27,8 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
             <div className="flex-shrink-0">
               <img src={dashboardLogo} alt="RAG Chatbot Dashboard" className="h-11 w-11 object-contain" />
             </div>
-            <h1 className="font-inter text-xl font-semibold tracking-tight text-foreground leading-tight">
-              Admin Dashboard
+            <h1 className="font-satoshi text-xl font-semibold tracking-tight text-foreground leading-tight">
+              Knowledge Assistant
             </h1>
           </div>
           <Button
