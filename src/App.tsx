@@ -11,6 +11,7 @@ import Files from "./pages/Files";
 import Integrations from "./pages/Integrations";
 import Branding from "./pages/Branding";
 import Pipeline from "./pages/Pipeline";
+import Assistant from "./pages/Assistant";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
@@ -39,6 +40,7 @@ const App = () => (
                       <Route path="/integrations" element={<Integrations />} />
                       <Route path="/branding" element={<Branding />} />
                       <Route path="/pipeline" element={<Pipeline />} />
+                      <Route path="/assistant" element={<Assistant />} />
                       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                       <Route path="*" element={<NotFound />} />
                     </Routes>

@@ -2,12 +2,13 @@ import { ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useTheme } from "next-themes";
 import { cn } from "@/lib/utils";
-import { FileUp, Puzzle, Palette, Play, LayoutDashboard, Moon, Sun } from "lucide-react";
+import { FileUp, Puzzle, Palette, Play, LayoutDashboard, Moon, Sun, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import dashboardLogo from "@/assets/brain-logo.png";
 
 const navigation = [
   { name: "Dashboard", href: "/home", icon: LayoutDashboard },
+  { name: "Talk to Assistant", href: "/assistant", icon: MessageSquare },
   { name: "Files", href: "/files", icon: FileUp },
   { name: "Integrations", href: "/integrations", icon: Puzzle },
   { name: "Branding", href: "/branding", icon: Palette },

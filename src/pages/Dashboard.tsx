@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "@/hooks/use-toast";
 import ChatAssistant from "@/components/ChatAssistant";
 import { cn } from "@/lib/utils";
+import brainLogo from "@/assets/brain-logo.png";
 
 const quickLinks = [
   {
@@ -49,7 +50,7 @@ export default function Dashboard() {
     brandName: "Knowledge Assistant",
     primaryColor: "#6366f1",
     secondaryColor: "#c026d3",
-    logo: null,
+    logo: brainLogo,
   };
 
   const handleLogout = async () => {
