@@ -1,13 +1,8 @@
 import ChatAssistant from "@/components/ChatAssistant";
-import brainLogo from "@/assets/brain-logo.png";
+import { useBranding } from "@/hooks/useBranding";
 
 export default function Assistant() {
-  // Default branding settings - will be replaced with actual config later
-  const brandingConfig = {
-    brandName: "Knowledge Assistant",
-    primaryColor: "#6366f1",
-    logo: brainLogo,
-  };
+  const { settings } = useBranding();
 
   return (
     <div className="space-y-6">
@@ -19,9 +14,9 @@ export default function Assistant() {
       </div>
 
       <ChatAssistant
-        brandName={brandingConfig.brandName}
-        primaryColor={brandingConfig.primaryColor}
-        logo={brandingConfig.logo}
+        brandName={settings.brandName}
+        primaryColor={settings.primaryColor}
+        logo={settings.logo}
       />
     </div>
   );
