@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
-import { Send, Loader2, Bot, User } from "lucide-react";
+import { Send, Loader2, Bot, UserCircle } from "lucide-react";
+import brainLogo from "@/assets/brain-logo.png";
 import { cn } from "@/lib/utils";
 
 interface Message {
@@ -76,16 +77,7 @@ export default function ChatAssistant({
       {/* Chat Header */}
       <Card className="mb-4 p-4 border-b">
         <div className="flex items-center gap-3">
-          {logo ? (
-            <img src={logo} alt={brandName} className="h-10 w-10 object-contain rounded" />
-          ) : (
-            <div
-              className="h-10 w-10 rounded-lg flex items-center justify-center"
-              style={{ backgroundColor: `${primaryColor}20` }}
-            >
-              <Bot className="h-6 w-6" style={{ color: primaryColor }} />
-            </div>
-          )}
+          <img src={logo || brainLogo} alt={brandName} className="h-10 w-10 object-contain rounded" />
           <div>
             <h2 className="font-satoshi text-lg font-semibold">{brandName}</h2>
             <p className="text-sm text-muted-foreground">Ask me anything about your knowledge base</p>
@@ -98,12 +90,11 @@ export default function ChatAssistant({
         <ScrollArea className="flex-1 p-6" ref={scrollRef}>
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center space-y-4 py-12">
-              <div
-                className="h-16 w-16 rounded-2xl flex items-center justify-center animate-pulse"
-                style={{ backgroundColor: `${primaryColor}15` }}
-              >
-                <Bot className="h-8 w-8" style={{ color: primaryColor }} />
-              </div>
+              <img 
+                src={logo || brainLogo} 
+                alt={brandName} 
+                className="h-16 w-16 object-contain rounded-2xl animate-pulse" 
+              />
               <div className="space-y-2">
                 <h3 className="font-satoshi text-xl font-semibold">Start a conversation</h3>
                 <p className="text-muted-foreground max-w-md">
@@ -138,12 +129,11 @@ export default function ChatAssistant({
                   )}
                 >
                   {message.role === "assistant" && (
-                    <div
-                      className="h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-1"
-                      style={{ backgroundColor: `${primaryColor}15` }}
-                    >
-                      <Bot className="h-5 w-5" style={{ color: primaryColor }} />
-                    </div>
+                    <img 
+                      src={logo || brainLogo} 
+                      alt={brandName} 
+                      className="h-8 w-8 object-contain rounded-lg flex-shrink-0 mt-1" 
+                    />
                   )}
                   <div
                     className={cn(
@@ -167,20 +157,19 @@ export default function ChatAssistant({
                     </p>
                   </div>
                   {message.role === "user" && (
-                    <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 mt-1">
-                      <User className="h-5 w-5 text-primary" />
+                    <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center flex-shrink-0 mt-1 border border-primary/20">
+                      <UserCircle className="h-5 w-5 text-primary" />
                     </div>
                   )}
                 </div>
               ))}
               {isLoading && (
                 <div className="flex gap-3 animate-fade-in">
-                  <div
-                    className="h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{ backgroundColor: `${primaryColor}15` }}
-                  >
-                    <Bot className="h-5 w-5" style={{ color: primaryColor }} />
-                  </div>
+                  <img 
+                    src={logo || brainLogo} 
+                    alt={brandName} 
+                    className="h-8 w-8 object-contain rounded-lg flex-shrink-0" 
+                  />
                   <div className="bg-muted border rounded-2xl px-4 py-3 shadow-sm">
                     <div className="flex items-center gap-2">
                       <Loader2 className="h-4 w-4 animate-spin" style={{ color: primaryColor }} />
