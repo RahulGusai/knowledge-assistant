@@ -14,6 +14,7 @@ export default {
     },
     extend: {
       fontFamily: {
+        'satoshi': ['Satoshi', 'system-ui', '-apple-system', 'sans-serif'],
         'inter': ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
       },
       colors: {
