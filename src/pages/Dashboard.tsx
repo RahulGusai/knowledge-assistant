@@ -8,7 +8,6 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "@/hooks/use-toast";
 import ChatAssistant from "@/components/ChatAssistant";
 import { cn } from "@/lib/utils";
-import { useBranding } from "@/hooks/useBranding";
 
 const quickLinks = [
   {
@@ -44,7 +43,6 @@ const quickLinks = [
 export default function Dashboard() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("overview");
-  const { settings } = useBranding();
 
   const handleLogout = async () => {
     const { error } = await supabase.auth.signOut();
@@ -142,11 +140,7 @@ export default function Dashboard() {
         </TabsContent>
 
         <TabsContent value="chat" className="mt-6">
-          <ChatAssistant
-            brandName={settings.brandName}
-            primaryColor={settings.primaryColor}
-            logo={settings.logo}
-          />
+          <ChatAssistant />
         </TabsContent>
       </Tabs>
     </div>

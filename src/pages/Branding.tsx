@@ -5,12 +5,15 @@ import { Label } from "@/components/ui/label";
 import { Palette, Upload, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useBranding } from "@/hooks/useBranding";
+import { useState } from "react";
 
 export default function Branding() {
   const { toast } = useToast();
-  const { settings, updateSettings } = useBranding();
+  const { settings: savedSettings, updateSettings } = useBranding();
+  const [settings, setSettings] = useState(savedSettings);
 
   const handleSave = () => {
+    updateSettings(settings);
     toast({
       title: "Settings saved",
       description: "Your branding settings have been updated successfully",
@@ -22,7 +25,7 @@ export default function Branding() {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        updateSettings({ logo: reader.result as string });
+        setSettings(prev => ({ ...prev, logo: reader.result as string }));
       };
       reader.readAsDataURL(file);
     }
@@ -50,7 +53,7 @@ export default function Branding() {
                 <Input
                   id="brandName"
                   value={settings.brandName}
-                  onChange={(e) => updateSettings({ brandName: e.target.value })}
+                  onChange={(e) => setSettings(prev => ({ ...prev, brandName: e.target.value }))}
                   placeholder="Enter your brand name"
                 />
               </div>
@@ -97,13 +100,13 @@ export default function Branding() {
                       id="primaryColor"
                       type="color"
                       value={settings.primaryColor}
-                      onChange={(e) => updateSettings({ primaryColor: e.target.value })}
+                      onChange={(e) => setSettings(prev => ({ ...prev, primaryColor: e.target.value }))}
                       className="w-20 h-10 p-1 cursor-pointer"
                     />
                     <Input
                       type="text"
                       value={settings.primaryColor}
-                      onChange={(e) => updateSettings({ primaryColor: e.target.value })}
+                      onChange={(e) => setSettings(prev => ({ ...prev, primaryColor: e.target.value }))}
                       className="flex-1"
                     />
                   </div>
@@ -116,13 +119,13 @@ export default function Branding() {
                       id="secondaryColor"
                       type="color"
                       value={settings.secondaryColor}
-                      onChange={(e) => updateSettings({ secondaryColor: e.target.value })}
+                      onChange={(e) => setSettings(prev => ({ ...prev, secondaryColor: e.target.value }))}
                       className="w-20 h-10 p-1 cursor-pointer"
                     />
                     <Input
                       type="text"
                       value={settings.secondaryColor}
-                      onChange={(e) => updateSettings({ secondaryColor: e.target.value })}
+                      onChange={(e) => setSettings(prev => ({ ...prev, secondaryColor: e.target.value }))}
                       className="flex-1"
                     />
                   </div>
@@ -143,7 +146,7 @@ export default function Branding() {
                   <select
                     id="primaryFont"
                     value={settings.primaryFont}
-                    onChange={(e) => updateSettings({ primaryFont: e.target.value })}
+                    onChange={(e) => setSettings(prev => ({ ...prev, primaryFont: e.target.value }))}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <option value="Inter">Inter</option>
@@ -160,7 +163,7 @@ export default function Branding() {
                   <select
                     id="secondaryFont"
                     value={settings.secondaryFont}
-                    onChange={(e) => updateSettings({ secondaryFont: e.target.value })}
+                    onChange={(e) => setSettings(prev => ({ ...prev, secondaryFont: e.target.value }))}
                     className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <option value="Georgia">Georgia</option>

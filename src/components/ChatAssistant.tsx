@@ -139,15 +139,16 @@ export default function ChatAssistant({
                     className={cn(
                       "max-w-[75%] rounded-2xl px-4 py-3 shadow-sm",
                       message.role === "user"
-                        ? "bg-primary text-primary-foreground"
+                        ? "text-white"
                         : "bg-muted border"
                     )}
+                    style={message.role === "user" ? { backgroundColor: primaryColor } : undefined}
                   >
                     <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
                     <p
                       className={cn(
                         "text-xs mt-2",
-                        message.role === "user" ? "text-primary-foreground/70" : "text-muted-foreground"
+                        message.role === "user" ? "text-white/70" : "text-muted-foreground"
                       )}
                     >
                       {message.timestamp.toLocaleTimeString([], {
@@ -157,8 +158,14 @@ export default function ChatAssistant({
                     </p>
                   </div>
                   {message.role === "user" && (
-                    <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center flex-shrink-0 mt-1 border border-primary/20">
-                      <UserCircle className="h-5 w-5 text-primary" />
+                    <div 
+                      className="h-8 w-8 rounded-lg bg-gradient-to-br flex items-center justify-center flex-shrink-0 mt-1 border"
+                      style={{ 
+                        backgroundImage: `linear-gradient(to bottom right, ${primaryColor}20, ${primaryColor}40)`,
+                        borderColor: `${primaryColor}40`
+                      }}
+                    >
+                      <UserCircle className="h-5 w-5" style={{ color: primaryColor }} />
                     </div>
                   )}
                 </div>
