@@ -36,7 +36,7 @@ export default function Files() {
   const [isDragging, setIsDragging] = useState(false);
   const [isGoogleDriveConnected, setIsGoogleDriveConnected] = useState(false);
   const { toast } = useToast();
-  const { addFileId, setTriggerBy, files, addFile, fetchFiles } = usePipeline();
+  const { addFileId, setTriggerBy, files, fetchFiles } = usePipeline();
 
   useEffect(() => {
     const storedConnection = localStorage.getItem("googleDriveConnected");
@@ -152,10 +152,10 @@ export default function Files() {
         throw new Error(`Failed to save file metadata: ${dbError.message}`);
       }
 
-      // Add file ID to pipeline context
+      // Add file ID to pipeline context and refresh files from database
       if (insertedFile?.id) {
         addFileId(insertedFile.id);
-        addFile(insertedFile);
+        await fetchFiles(); // Fetch all files to ensure context is in sync with database
       }
 
       // Remove from uploading files

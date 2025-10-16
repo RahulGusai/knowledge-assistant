@@ -18,7 +18,6 @@ interface PipelineContextType {
   clearFileIds: () => void;
   setTriggerBy: (userId: string) => void;
   files: FileItem[];
-  addFile: (file: FileItem) => void;
   fetchFiles: () => Promise<void>;
 }
 
@@ -67,10 +66,6 @@ export const PipelineProvider = ({ children }: { children: ReactNode }) => {
     setFileIds([]);
   };
 
-  const addFile = (file: FileItem) => {
-    setFiles(prev => [file, ...prev]);
-  };
-
   return (
     <PipelineContext.Provider
       value={{
@@ -81,7 +76,6 @@ export const PipelineProvider = ({ children }: { children: ReactNode }) => {
         clearFileIds,
         setTriggerBy,
         files,
-        addFile,
         fetchFiles,
       }}
     >
