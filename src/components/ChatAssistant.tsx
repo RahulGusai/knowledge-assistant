@@ -17,7 +17,6 @@ interface Message {
 }
 
 interface ChatAssistantProps {
-  handle;
   brandName?: string;
   primaryColor?: string;
   secondaryColor?: string;
@@ -67,7 +66,7 @@ export default function ChatAssistant({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          workspace_id: "default_workspace",
+          workspace_id: "37926ce6-9757-4667-bf16-b438d6bc95b1",
           query: userMessage.content,
         }),
       });
