@@ -19,18 +19,18 @@ interface PipelineRun {
 
 // Job status to friendly message mapping
 const JOB_STATUS_MESSAGES: Record<string, { message: string; progress: number }> = {
-  pending: { message: "Pipeline is queued and waiting to start...", progress: 10 },
-  started: { message: "Pipeline execution has begun! 🚀", progress: 15 },
-  files_downloaded: { message: "Successfully downloaded all files from storage", progress: 25 },
-  files_extracted: { message: "Extracted and parsed file contents", progress: 35 },
-  chunks_created: { message: "Split documents into digestible chunks", progress: 45 },
-  embeddings_generated: { message: "Generated AI embeddings for semantic search", progress: 60 },
-  delta_calculated: { message: "Hang on tight... job delta created successfully!", progress: 70 },
-  snapshot_created: { message: "Just took a snapshot of the job to save us future troubles", progress: 80 },
-  database_updated: { message: "Updated the database with new embeddings", progress: 90 },
+  created: { message: "Pipeline job created and initializing...", progress: 5 },
+  queued: { message: "Pipeline is queued and waiting to start...", progress: 10 },
+  validating: { message: "Validating files and prerequisites...", progress: 15 },
+  validation_failed: { message: "Validation failed - please check your files", progress: 0 },
+  snapshot_created: { message: "Just took a snapshot of the job to save us future troubles", progress: 30 },
+  delta_calculated: { message: "Hang on tight... job delta created successfully!", progress: 50 },
+  ingesting: { message: "Ingesting and processing your documents...", progress: 70 },
+  ingestion_failed: { message: "Failed to ingest documents - please try again", progress: 0 },
+  embeddings_created: { message: "Generated AI embeddings for semantic search", progress: 90 },
   completed: { message: "Pipeline completed successfully! ✨", progress: 100 },
   failed: { message: "Pipeline encountered an error", progress: 0 },
-  error: { message: "An unexpected error occurred", progress: 0 },
+  cancelled: { message: "Pipeline was cancelled", progress: 0 },
 };
 
 export default function Pipeline() {
@@ -69,12 +69,12 @@ export default function Pipeline() {
           // Only process if it matches our workspace_id
           if (job.workspace_id === workspaceId) {
             const status = job.status as string;
-            const statusInfo = JOB_STATUS_MESSAGES[status] || JOB_STATUS_MESSAGES.started;
+            const statusInfo = JOB_STATUS_MESSAGES[status] || { message: "Processing...", progress: 50 };
             
             setProgressMessage(statusInfo.message);
             setProgress(statusInfo.progress);
 
-            // Handle completion or failure
+            // Terminal success state
             if (status === 'completed') {
               setIsRunning(false);
               setRuns(prevRuns => prevRuns.map(run => 
@@ -86,7 +86,9 @@ export default function Pipeline() {
                 title: "Pipeline completed successfully",
                 description: "The pipeline ran successfully",
               });
-            } else if (status === 'failed' || status === 'error') {
+            } 
+            // Terminal error states
+            else if (status === 'failed' || status === 'validation_failed' || status === 'ingestion_failed' || status === 'cancelled') {
               setIsRunning(false);
               setRuns(prevRuns => prevRuns.map(run => 
                 run.id === currentRunId 
@@ -94,7 +96,7 @@ export default function Pipeline() {
                   : run
               ));
               toast({
-                title: "Pipeline failed",
+                title: status === 'cancelled' ? "Pipeline cancelled" : "Pipeline failed",
                 description: statusInfo.message,
                 variant: "destructive",
               });
