@@ -15,6 +15,7 @@ interface Message {
   content: string;
   timestamp: Date;
   usedEmbeddings?: boolean;
+  responseTime?: number;
 }
 
 interface ChatAssistantProps {
@@ -60,6 +61,8 @@ export default function ChatAssistant({
     setInput("");
     setIsLoading(true);
 
+    const startTime = performance.now();
+
     try {
       const response = await fetch(API_ENDPOINTS.RAG_QUERY, {
         method: "POST",
@@ -77,6 +80,8 @@ export default function ChatAssistant({
       }
 
       const data = await response.json();
+      const endTime = performance.now();
+      const responseTime = ((endTime - startTime) / 1000).toFixed(2);
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -84,6 +89,7 @@ export default function ChatAssistant({
         content: data.response || "I couldn't generate a response.",
         timestamp: new Date(),
         usedEmbeddings: data.used_embeddings || false,
+        responseTime: parseFloat(responseTime),
       };
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
@@ -208,6 +214,19 @@ export default function ChatAssistant({
                           }}
                         >
                           {message.usedEmbeddings ? "Context Used" : "No Context"}
+                        </Badge>
+                      )}
+                      {message.role === "assistant" && message.responseTime !== undefined && (
+                        <Badge
+                          variant="outline"
+                          className="text-[10px] px-1.5 py-0 h-4"
+                          style={{
+                            borderColor: `${primaryColor}30`,
+                            backgroundColor: `${primaryColor}08`,
+                            color: primaryColor,
+                          }}
+                        >
+                          {message.responseTime}s
                         </Badge>
                       )}
                     </div>
