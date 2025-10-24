@@ -17,6 +17,7 @@ interface Message {
 }
 
 interface ChatAssistantProps {
+  handle;
   brandName?: string;
   primaryColor?: string;
   secondaryColor?: string;
@@ -76,10 +77,13 @@ export default function ChatAssistant({
       }
 
       const data = await response.json();
+
+      console.log(data);
+
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: data.response || data.answer || "I couldn't generate a response.",
+        content: data.response || "I couldn't generate a response.",
         timestamp: new Date(),
         usedEmbeddings: data.used_embeddings || false,
       };
@@ -113,8 +117,12 @@ export default function ChatAssistant({
         <div className="flex items-center gap-3">
           <img src={logo || brainLogo} alt={brandName} className="h-10 w-10 object-contain rounded" />
           <div>
-            <h2 className="text-lg font-semibold" style={{ fontFamily: primaryFont }}>{brandName}</h2>
-            <p className="text-sm text-muted-foreground" style={{ fontFamily: secondaryFont }}>Ask me anything about your knowledge base</p>
+            <h2 className="text-lg font-semibold" style={{ fontFamily: primaryFont }}>
+              {brandName}
+            </h2>
+            <p className="text-sm text-muted-foreground" style={{ fontFamily: secondaryFont }}>
+              Ask me anything about your knowledge base
+            </p>
           </div>
         </div>
       </Card>
@@ -124,13 +132,15 @@ export default function ChatAssistant({
         <ScrollArea className="flex-1 p-6" ref={scrollRef}>
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center space-y-4 py-12">
-              <img 
-                src={logo || brainLogo} 
-                alt={brandName} 
-                className="h-16 w-16 object-contain rounded-2xl animate-pulse" 
+              <img
+                src={logo || brainLogo}
+                alt={brandName}
+                className="h-16 w-16 object-contain rounded-2xl animate-pulse"
               />
               <div className="space-y-2">
-                <h3 className="text-xl font-semibold" style={{ fontFamily: primaryFont }}>Start a conversation</h3>
+                <h3 className="text-xl font-semibold" style={{ fontFamily: primaryFont }}>
+                  Start a conversation
+                </h3>
                 <p className="text-muted-foreground max-w-md" style={{ fontFamily: secondaryFont }}>
                   Ask questions about your documents, files, and knowledge base. I'm here to help!
                 </p>
@@ -159,41 +169,39 @@ export default function ChatAssistant({
                   key={message.id}
                   className={cn(
                     "flex gap-3 animate-fade-in",
-                    message.role === "user" ? "justify-end" : "justify-start"
+                    message.role === "user" ? "justify-end" : "justify-start",
                   )}
                 >
                   {message.role === "assistant" && (
-                    <img 
-                      src={logo || brainLogo} 
-                      alt={brandName} 
-                      className="h-8 w-8 object-contain rounded-lg flex-shrink-0 mt-1" 
+                    <img
+                      src={logo || brainLogo}
+                      alt={brandName}
+                      className="h-8 w-8 object-contain rounded-lg flex-shrink-0 mt-1"
                     />
                   )}
                   <div
                     className={cn(
                       "max-w-[75%] rounded-2xl px-4 py-3 shadow-sm",
-                      message.role === "user"
-                        ? "text-white"
-                        : "bg-muted border"
+                      message.role === "user" ? "text-white" : "bg-muted border",
                     )}
                     style={message.role === "user" ? { backgroundColor: primaryColor } : undefined}
                   >
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ fontFamily: message.role === "user" ? primaryFont : secondaryFont }}>{message.content}</p>
+                    <p
+                      className="text-sm leading-relaxed whitespace-pre-wrap"
+                      style={{ fontFamily: message.role === "user" ? primaryFont : secondaryFont }}
+                    >
+                      {message.content}
+                    </p>
                     <div className="flex items-center gap-2 mt-2">
-                      <p
-                        className={cn(
-                          "text-xs",
-                          message.role === "user" ? "text-white/70" : "text-muted-foreground"
-                        )}
-                      >
+                      <p className={cn("text-xs", message.role === "user" ? "text-white/70" : "text-muted-foreground")}>
                         {message.timestamp.toLocaleTimeString([], {
                           hour: "2-digit",
                           minute: "2-digit",
                         })}
                       </p>
                       {message.role === "assistant" && message.usedEmbeddings !== undefined && (
-                        <Badge 
-                          variant="outline" 
+                        <Badge
+                          variant="outline"
                           className="text-[10px] px-1.5 py-0 h-4"
                           style={{
                             borderColor: message.usedEmbeddings ? `${primaryColor}40` : `${secondaryColor}40`,
@@ -207,11 +215,11 @@ export default function ChatAssistant({
                     </div>
                   </div>
                   {message.role === "user" && (
-                    <div 
+                    <div
                       className="h-8 w-8 rounded-lg bg-gradient-to-br flex items-center justify-center flex-shrink-0 mt-1 border"
-                      style={{ 
+                      style={{
                         backgroundImage: `linear-gradient(to bottom right, ${primaryColor}20, ${primaryColor}40)`,
-                        borderColor: `${primaryColor}40`
+                        borderColor: `${primaryColor}40`,
                       }}
                     >
                       <UserCircle className="h-5 w-5" style={{ color: primaryColor }} />
@@ -221,10 +229,10 @@ export default function ChatAssistant({
               ))}
               {isLoading && (
                 <div className="flex gap-3 animate-fade-in">
-                  <img 
-                    src={logo || brainLogo} 
-                    alt={brandName} 
-                    className="h-8 w-8 object-contain rounded-lg flex-shrink-0 animate-pulse" 
+                  <img
+                    src={logo || brainLogo}
+                    alt={brandName}
+                    className="h-8 w-8 object-contain rounded-lg flex-shrink-0 animate-pulse"
                     style={{
                       animation: "pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite, shimmer 2s linear infinite",
                       backgroundImage: "linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)",
@@ -232,12 +240,21 @@ export default function ChatAssistant({
                     }}
                   />
                   <div className="bg-muted border rounded-2xl px-3 py-2 shadow-sm">
-                    <span className="text-xs text-muted-foreground flex items-center" style={{ fontFamily: secondaryFont }}>
+                    <span
+                      className="text-xs text-muted-foreground flex items-center"
+                      style={{ fontFamily: secondaryFont }}
+                    >
                       Thinking
                       <span className="inline-flex ml-0.5">
-                        <span className="animate-bounce" style={{ animationDelay: "0ms", animationDuration: "1.4s" }}>.</span>
-                        <span className="animate-bounce" style={{ animationDelay: "200ms", animationDuration: "1.4s" }}>.</span>
-                        <span className="animate-bounce" style={{ animationDelay: "400ms", animationDuration: "1.4s" }}>.</span>
+                        <span className="animate-bounce" style={{ animationDelay: "0ms", animationDuration: "1.4s" }}>
+                          .
+                        </span>
+                        <span className="animate-bounce" style={{ animationDelay: "200ms", animationDuration: "1.4s" }}>
+                          .
+                        </span>
+                        <span className="animate-bounce" style={{ animationDelay: "400ms", animationDuration: "1.4s" }}>
+                          .
+                        </span>
                       </span>
                     </span>
                   </div>
@@ -266,17 +283,9 @@ export default function ChatAssistant({
               disabled={!input.trim() || isLoading}
               size="icon"
               className="h-[44px] w-[44px] flex-shrink-0"
-              style={
-                input.trim() && !isLoading
-                  ? { backgroundColor: primaryColor }
-                  : undefined
-              }
+              style={input.trim() && !isLoading ? { backgroundColor: primaryColor } : undefined}
             >
-              {isLoading ? (
-                <Loader2 className="h-5 w-5 animate-spin" />
-              ) : (
-                <Send className="h-5 w-5" />
-              )}
+              {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
             </Button>
           </div>
           <p className="text-xs text-muted-foreground mt-2 text-center">
