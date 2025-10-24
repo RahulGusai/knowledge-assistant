@@ -226,14 +226,47 @@ export default function Pipeline() {
         throw new Error(`API returned ${response.status}: ${response.statusText}`);
       }
 
-      const result = await response.json();
+      // Check if response is JSON
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error("Pipeline API returned invalid response format");
+      }
+
+      let result;
+      try {
+        result = await response.json();
+      } catch {
+        throw new Error("Pipeline API returned invalid JSON response");
+      }
       
+      // Check if success field is false
+      if (result.success === false) {
+        throw new Error(result.error || result.message || "Pipeline API returned failure status");
+      }
+
+      // Check if API returned success=true, mark as immediate success
+      if (result.success === true) {
+        setIsRunning(false);
+        setProgress(100);
+        setProgressMessage("Pipeline completed successfully! ✨");
+        setRuns(prevRuns => prevRuns.map(run => 
+          run.id === newRun.id 
+            ? { ...run, status: "success" as const, duration: "Completed" }
+            : run
+        ));
+        toast({
+          title: "Pipeline completed successfully",
+          description: "The pipeline ran successfully",
+        });
+        return;
+      }
+
       // Check if API returned without starting a job
       if (!result || result.error) {
         throw new Error(result?.error || "Pipeline API returned without starting job");
       }
 
-      // Set a timeout to detect if job never starts or stalls
+      // Set a timeout to detect if job never starts or stalls (5 minutes)
       const timeout = setTimeout(() => {
         setIsRunning(false);
         setProgress(0);
@@ -245,7 +278,7 @@ export default function Pipeline() {
         ));
         toast({
           title: "Pipeline timeout",
-          description: "Pipeline did not complete within expected time",
+          description: "No status update received within 5 minutes. Pipeline failed.",
           variant: "destructive",
         });
       }, 300000); // 5 minutes timeout
@@ -264,7 +297,7 @@ export default function Pipeline() {
       ));
       toast({
         title: "Pipeline failed",
-        description: error instanceof Error ? error.message : "Failed to trigger pipeline",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
         variant: "destructive",
       });
     }
@@ -288,7 +321,7 @@ export default function Pipeline() {
       case "running":
         return "bg-primary text-primary-foreground";
       case "success":
-        return "bg-success text-success-foreground";
+        return "bg-gradient-to-r from-success to-success/80 text-success-foreground shadow-lg";
       case "failed":
         return "bg-destructive text-destructive-foreground";
       case "pending":
