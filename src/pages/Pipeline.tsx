@@ -17,44 +17,23 @@ interface PipelineRun {
   trigger: string;
 }
 
-// Calculate incremental progress for happy path statuses
-const HAPPY_PATH_STATUSES = [
-  'created',
-  'queued', 
-  'validating',
-  'snapshot_created',
-  'delta_calculated',
-  'ingesting',
-  'embeddings_created',
-  'completed'
-];
-
-const TERMINAL_ERROR_STATUSES = ['validation_failed', 'ingestion_failed', 'failed', 'cancelled'];
-
-// Calculate progress using compound growth: next = prev + (prev * increment / 100)
-// With 8 steps and 45% increment, we reach ~98% at completion
-const calculateProgressMap = () => {
-  const INCREMENT_PERCENTAGE = 45;
-  const progressMap: Record<string, number> = {};
-  let currentProgress = 5;
-  
-  HAPPY_PATH_STATUSES.forEach((status) => {
-    progressMap[status] = Math.min(Math.round(currentProgress), 100);
-    currentProgress = currentProgress + (currentProgress * INCREMENT_PERCENTAGE / 100);
-  });
-  
-  // Ensure completed is always 100%
-  progressMap['completed'] = 100;
-  
-  // Terminal error statuses have 0 progress
-  TERMINAL_ERROR_STATUSES.forEach(status => {
-    progressMap[status] = 0;
-  });
-  
-  return progressMap;
+// Progress mapping for pipeline statuses
+const PROGRESS_MAP: Record<string, number> = {
+  created: 0,
+  queued: 5,
+  validating: 10,
+  validation_failed: 0,
+  snapshot_created: 25,
+  delta_calculated: 40,
+  ingesting: 60,
+  ingestion_failed: 0,
+  embeddings_created: 95,
+  completed: 100,
+  failed: 0,
+  cancelled: 0,
 };
 
-const PROGRESS_MAP = calculateProgressMap();
+const TERMINAL_ERROR_STATUSES = ['validation_failed', 'ingestion_failed', 'failed', 'cancelled'];
 
 // Job status to friendly message mapping
 const JOB_STATUS_MESSAGES: Record<string, { message: string; progress: number }> = {
@@ -80,6 +59,15 @@ export default function Pipeline() {
   const [progressMessage, setProgressMessage] = useState("");
   const [runs, setRuns] = useState<PipelineRun[]>([]);
   const [currentRunId, setCurrentRunId] = useState<string | null>(null);
+  const [currentStatus, setCurrentStatus] = useState<string>("");
+
+  // Get progress bar color based on progress value
+  const getProgressVariant = (progress: number): "default" | "accent" | "success" | "warning" => {
+    if (progress >= 95) return "success";
+    if (progress >= 60) return "accent";
+    if (progress >= 25) return "default";
+    return "default";
+  };
 
   // Listen to job status updates via Supabase realtime
   useEffect(() => {
@@ -110,8 +98,25 @@ export default function Pipeline() {
             const status = job.status as string;
             const statusInfo = JOB_STATUS_MESSAGES[status] || { message: "Processing...", progress: 50 };
             
+            setCurrentStatus(status);
             setProgressMessage(statusInfo.message);
-            setProgress(statusInfo.progress);
+            
+            // Handle ingesting phase with animated progress (60-90%)
+            if (status === 'ingesting') {
+              // Start at 60% and animate to 90%
+              let currentProgress = 60;
+              const interval = setInterval(() => {
+                currentProgress += 2;
+                if (currentProgress <= 90) {
+                  setProgress(currentProgress);
+                } else {
+                  clearInterval(interval);
+                }
+              }, 300);
+              return () => clearInterval(interval);
+            } else {
+              setProgress(statusInfo.progress);
+            }
 
             // Terminal success state
             if (status === 'completed') {
@@ -280,8 +285,13 @@ export default function Pipeline() {
                       Please wait while the pipeline executes...
                     </p>
                     <div className="max-w-md mx-auto space-y-2">
-                      <Progress value={progress} className="h-2" />
+                      <Progress 
+                        value={progress} 
+                        variant={getProgressVariant(progress)}
+                        className="h-2" 
+                      />
                       <p className="text-xs text-muted-foreground">{progressMessage}</p>
+                      <p className="text-xs font-medium">{progress}%</p>
                     </div>
                   </div>
                   <Button variant="outline" disabled>
