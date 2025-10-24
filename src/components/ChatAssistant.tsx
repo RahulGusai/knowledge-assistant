@@ -57,18 +57,43 @@ export default function ChatAssistant({
     setInput("");
     setIsLoading(true);
 
-    // Simulate API call - will be replaced with actual backend integration
-    setTimeout(() => {
+    try {
+      const response = await fetch("https://rag-query-180483052401.us-east1.run.app/query", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          workspace_id: "default_workspace",
+          query: userMessage.content,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to get response from assistant");
+      }
+
+      const data = await response.json();
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content: "This is a placeholder response. Backend integration coming soon!",
+        content: data.response || data.answer || "I couldn't generate a response.",
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, assistantMessage]);
+    } catch (error) {
+      console.error("Error calling RAG API:", error);
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: "Sorry, I encountered an error processing your request. Please try again.",
+        timestamp: new Date(),
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+    } finally {
       setIsLoading(false);
       inputRef.current?.focus();
-    }, 1500);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -181,12 +206,23 @@ export default function ChatAssistant({
                   <img 
                     src={logo || brainLogo} 
                     alt={brandName} 
-                    className="h-8 w-8 object-contain rounded-lg flex-shrink-0" 
+                    className="h-8 w-8 object-contain rounded-lg flex-shrink-0 animate-pulse" 
+                    style={{
+                      animation: "pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite, shimmer 2s linear infinite",
+                      backgroundImage: "linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent)",
+                      backgroundSize: "200% 100%",
+                    }}
                   />
                   <div className="bg-muted border rounded-2xl px-4 py-3 shadow-sm">
                     <div className="flex items-center gap-2">
-                      <Loader2 className="h-4 w-4 animate-spin" style={{ color: primaryColor }} />
-                      <span className="text-sm text-muted-foreground">Thinking...</span>
+                      <span className="text-sm text-muted-foreground flex items-center">
+                        Thinking
+                        <span className="inline-flex ml-0.5">
+                          <span className="animate-bounce" style={{ animationDelay: "0ms", animationDuration: "1.4s" }}>.</span>
+                          <span className="animate-bounce" style={{ animationDelay: "200ms", animationDuration: "1.4s" }}>.</span>
+                          <span className="animate-bounce" style={{ animationDelay: "400ms", animationDuration: "1.4s" }}>.</span>
+                        </span>
+                      </span>
                     </div>
                   </div>
                 </div>
