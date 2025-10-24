@@ -7,6 +7,7 @@ import { Play, StopCircle, Clock, CheckCircle2, XCircle, RefreshCw, AlertCircle 
 import { useToast } from "@/hooks/use-toast";
 import { usePipeline } from "@/contexts/PipelineContext";
 import { API_ENDPOINTS } from "@/constants/api";
+import { supabase } from "@/lib/supabase";
 
 interface PipelineRun {
   id: string;
@@ -16,6 +17,22 @@ interface PipelineRun {
   trigger: string;
 }
 
+// Job status to friendly message mapping
+const JOB_STATUS_MESSAGES: Record<string, { message: string; progress: number }> = {
+  pending: { message: "Pipeline is queued and waiting to start...", progress: 10 },
+  started: { message: "Pipeline execution has begun! 🚀", progress: 15 },
+  files_downloaded: { message: "Successfully downloaded all files from storage", progress: 25 },
+  files_extracted: { message: "Extracted and parsed file contents", progress: 35 },
+  chunks_created: { message: "Split documents into digestible chunks", progress: 45 },
+  embeddings_generated: { message: "Generated AI embeddings for semantic search", progress: 60 },
+  delta_calculated: { message: "Hang on tight... job delta created successfully!", progress: 70 },
+  snapshot_created: { message: "Just took a snapshot of the job to save us future troubles", progress: 80 },
+  database_updated: { message: "Updated the database with new embeddings", progress: 90 },
+  completed: { message: "Pipeline completed successfully! ✨", progress: 100 },
+  failed: { message: "Pipeline encountered an error", progress: 0 },
+  error: { message: "An unexpected error occurred", progress: 0 },
+};
+
 export default function Pipeline() {
   const { toast } = useToast();
   const { fileIds, workspaceId, triggerBy } = usePipeline();
@@ -23,6 +40,76 @@ export default function Pipeline() {
   const [progress, setProgress] = useState(0);
   const [progressMessage, setProgressMessage] = useState("");
   const [runs, setRuns] = useState<PipelineRun[]>([]);
+  const [currentJobId, setCurrentJobId] = useState<string | null>(null);
+
+  // Listen to job status updates via Supabase realtime
+  useEffect(() => {
+    if (!supabase || !currentJobId) return;
+
+    const channel = supabase
+      .channel('job-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'jobs',
+          filter: `workspace_id=eq.${workspaceId}`,
+        },
+        (payload) => {
+          console.log('Job update received:', payload);
+          
+          // Only process INSERT and UPDATE events
+          if (payload.eventType !== 'INSERT' && payload.eventType !== 'UPDATE') {
+            return;
+          }
+
+          const job = payload.new as any;
+          
+          // Only process if it matches our workspace_id and current job
+          if (job.workspace_id === workspaceId && job.id === currentJobId) {
+            const status = job.status as string;
+            const statusInfo = JOB_STATUS_MESSAGES[status] || JOB_STATUS_MESSAGES.started;
+            
+            setProgressMessage(statusInfo.message);
+            setProgress(statusInfo.progress);
+
+            // Handle completion or failure
+            if (status === 'completed') {
+              setIsRunning(false);
+              setCurrentJobId(null);
+              setRuns(prevRuns => prevRuns.map(run => 
+                run.id === currentJobId 
+                  ? { ...run, status: "success" as const, duration: "Completed" }
+                  : run
+              ));
+              toast({
+                title: "Pipeline completed successfully",
+                description: "The pipeline ran successfully",
+              });
+            } else if (status === 'failed' || status === 'error') {
+              setIsRunning(false);
+              setCurrentJobId(null);
+              setRuns(prevRuns => prevRuns.map(run => 
+                run.id === currentJobId 
+                  ? { ...run, status: "failed" as const, duration: "Failed" }
+                  : run
+              ));
+              toast({
+                title: "Pipeline failed",
+                description: statusInfo.message,
+                variant: "destructive",
+              });
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentJobId, workspaceId, toast]);
 
   const handleTrigger = async () => {
     // Check if files are available
@@ -74,25 +161,31 @@ export default function Pipeline() {
 
       const result = await response.json();
 
-      setProgress(100);
-
-      // Check success flag
-      if (result.success === true) {
-        setIsRunning(false);
-        setRuns(prevRuns => prevRuns.map(run => 
-          run.id === newRun.id 
-            ? { ...run, status: "success" as const, duration: "Completed" }
-            : run
-        ));
-        toast({
-          title: "Pipeline completed successfully",
-          description: "The pipeline ran successfully",
-        });
+      // If API returns a job_id, track it for realtime updates
+      if (result.job_id) {
+        setCurrentJobId(result.job_id);
+        setProgressMessage("Job created! Waiting for status updates...");
       } else {
-        throw new Error(result.message || 'Pipeline execution failed');
+        // Fallback to old behavior if no job_id
+        setProgress(100);
+        if (result.success === true) {
+          setIsRunning(false);
+          setRuns(prevRuns => prevRuns.map(run => 
+            run.id === newRun.id 
+              ? { ...run, status: "success" as const, duration: "Completed" }
+              : run
+          ));
+          toast({
+            title: "Pipeline completed successfully",
+            description: "The pipeline ran successfully",
+          });
+        } else {
+          throw new Error(result.message || 'Pipeline execution failed');
+        }
       }
     } catch (error) {
       setIsRunning(false);
+      setCurrentJobId(null);
       setRuns(prevRuns => prevRuns.map(run => 
         run.id === newRun.id 
           ? { ...run, status: "failed" as const, duration: "Failed" }
