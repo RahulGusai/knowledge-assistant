@@ -61,6 +61,7 @@ export default function Pipeline() {
   const [runs, setRuns] = useState<PipelineRun[]>([]);
   const [currentRunId, setCurrentRunId] = useState<string | null>(null);
   const [currentStatus, setCurrentStatus] = useState<string>("");
+  const [timeoutId, setTimeoutId] = useState<NodeJS.Timeout | null>(null);
 
   // Get progress bar color based on progress value
   const getProgressVariant = (progress: number): "default" | "accent" | "success" | "warning" => {
@@ -73,6 +74,12 @@ export default function Pipeline() {
   // Listen to job status updates via Supabase realtime
   useEffect(() => {
     if (!supabase || !isRunning) return;
+
+    // Clear any existing timeout when we start listening
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+      setTimeoutId(null);
+    }
 
     const channel = supabase
       .channel('job-updates')
@@ -96,6 +103,12 @@ export default function Pipeline() {
           
           // Only process if it matches our workspace_id
           if (job.workspace_id === workspaceId) {
+            // Clear timeout since we received an update
+            if (timeoutId) {
+              clearTimeout(timeoutId);
+              setTimeoutId(null);
+            }
+
             const status = job.status as string;
             
             // Treat unknown statuses as failures if they're not in the known happy path
@@ -158,8 +171,11 @@ export default function Pipeline() {
 
     return () => {
       supabase.removeChannel(channel);
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
     };
-  }, [isRunning, workspaceId, toast, currentRunId]);
+  }, [isRunning, workspaceId, toast, currentRunId, timeoutId]);
 
   const handleTrigger = async () => {
     // Check if files are available
@@ -195,33 +211,50 @@ export default function Pipeline() {
       };
 
       setProgressMessage("Sending request to pipeline...");
-      setProgress(20);
+      setProgress(5);
 
-      // Trigger pipeline asynchronously - don't wait for job_id
-      fetch(API_ENDPOINTS.PIPELINE_TRIGGER, {
+      // Trigger pipeline and handle response
+      const response = await fetch(API_ENDPOINTS.PIPELINE_TRIGGER, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(payload),
-      }).catch(error => {
-        console.error('Pipeline trigger error:', error);
+      });
+
+      if (!response.ok) {
+        throw new Error(`API returned ${response.status}: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      
+      // Check if API returned without starting a job
+      if (!result || result.error) {
+        throw new Error(result?.error || "Pipeline API returned without starting job");
+      }
+
+      // Set a timeout to detect if job never starts or stalls
+      const timeout = setTimeout(() => {
         setIsRunning(false);
+        setProgress(0);
+        setProgressMessage("");
         setRuns(prevRuns => prevRuns.map(run => 
           run.id === newRun.id 
             ? { ...run, status: "failed" as const, duration: "Failed" }
             : run
         ));
         toast({
-          title: "Pipeline failed",
-          description: error instanceof Error ? error.message : "Failed to trigger pipeline",
+          title: "Pipeline timeout",
+          description: "Pipeline did not complete within expected time",
           variant: "destructive",
         });
-      });
+      }, 300000); // 5 minutes timeout
 
-      // Immediately start listening for updates
+      setTimeoutId(timeout);
+
+      // Start listening for updates
       setProgressMessage("Waiting for pipeline updates...");
-      setProgress(15);
+      setProgress(10);
     } catch (error) {
       setIsRunning(false);
       setRuns(prevRuns => prevRuns.map(run => 
