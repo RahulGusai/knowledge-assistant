@@ -34,6 +34,7 @@ const PROGRESS_MAP: Record<string, number> = {
 };
 
 const TERMINAL_ERROR_STATUSES = ['validation_failed', 'ingestion_failed', 'failed', 'cancelled'];
+const KNOWN_HAPPY_STATUSES = ['created', 'queued', 'validating', 'snapshot_created', 'delta_calculated', 'ingesting', 'embeddings_created', 'completed'];
 
 // Job status to friendly message mapping
 const JOB_STATUS_MESSAGES: Record<string, { message: string; progress: number }> = {
@@ -96,7 +97,10 @@ export default function Pipeline() {
           // Only process if it matches our workspace_id
           if (job.workspace_id === workspaceId) {
             const status = job.status as string;
-            const statusInfo = JOB_STATUS_MESSAGES[status] || { message: "Processing...", progress: 50 };
+            
+            // Treat unknown statuses as failures if they're not in the known happy path
+            const isUnknownStatus = !KNOWN_HAPPY_STATUSES.includes(status) && !TERMINAL_ERROR_STATUSES.includes(status);
+            const statusInfo = JOB_STATUS_MESSAGES[status] || { message: "Unknown error occurred", progress: 0 };
             
             setCurrentStatus(status);
             setProgressMessage(statusInfo.message);
@@ -131,8 +135,8 @@ export default function Pipeline() {
                 description: "The pipeline ran successfully",
               });
             } 
-            // Terminal error states - stop everything
-            else if (TERMINAL_ERROR_STATUSES.includes(status)) {
+            // Terminal error states or unknown statuses - stop everything
+            else if (TERMINAL_ERROR_STATUSES.includes(status) || isUnknownStatus) {
               setIsRunning(false);
               setProgress(0);
               setProgressMessage("");
