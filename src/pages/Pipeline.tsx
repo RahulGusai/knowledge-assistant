@@ -17,18 +17,57 @@ interface PipelineRun {
   trigger: string;
 }
 
+// Calculate incremental progress for happy path statuses
+const HAPPY_PATH_STATUSES = [
+  'created',
+  'queued', 
+  'validating',
+  'snapshot_created',
+  'delta_calculated',
+  'ingesting',
+  'embeddings_created',
+  'completed'
+];
+
+const TERMINAL_ERROR_STATUSES = ['validation_failed', 'ingestion_failed', 'failed', 'cancelled'];
+
+// Calculate progress using compound growth: next = prev + (prev * increment / 100)
+// With 8 steps and 45% increment, we reach ~98% at completion
+const calculateProgressMap = () => {
+  const INCREMENT_PERCENTAGE = 45;
+  const progressMap: Record<string, number> = {};
+  let currentProgress = 5;
+  
+  HAPPY_PATH_STATUSES.forEach((status) => {
+    progressMap[status] = Math.min(Math.round(currentProgress), 100);
+    currentProgress = currentProgress + (currentProgress * INCREMENT_PERCENTAGE / 100);
+  });
+  
+  // Ensure completed is always 100%
+  progressMap['completed'] = 100;
+  
+  // Terminal error statuses have 0 progress
+  TERMINAL_ERROR_STATUSES.forEach(status => {
+    progressMap[status] = 0;
+  });
+  
+  return progressMap;
+};
+
+const PROGRESS_MAP = calculateProgressMap();
+
 // Job status to friendly message mapping
 const JOB_STATUS_MESSAGES: Record<string, { message: string; progress: number }> = {
-  created: { message: "Pipeline job created and initializing...", progress: 5 },
-  queued: { message: "Pipeline is queued and waiting to start...", progress: 10 },
-  validating: { message: "Validating files and prerequisites...", progress: 15 },
+  created: { message: "Pipeline job created and initializing...", progress: PROGRESS_MAP.created },
+  queued: { message: "Pipeline is queued and waiting to start...", progress: PROGRESS_MAP.queued },
+  validating: { message: "Validating files and prerequisites...", progress: PROGRESS_MAP.validating },
   validation_failed: { message: "Validation failed - please check your files", progress: 0 },
-  snapshot_created: { message: "Just took a snapshot of the job to save us future troubles", progress: 30 },
-  delta_calculated: { message: "Hang on tight... job delta created successfully!", progress: 50 },
-  ingesting: { message: "Ingesting and processing your documents...", progress: 70 },
+  snapshot_created: { message: "Just took a snapshot of the job to save us future troubles", progress: PROGRESS_MAP.snapshot_created },
+  delta_calculated: { message: "Hang on tight... job delta created successfully!", progress: PROGRESS_MAP.delta_calculated },
+  ingesting: { message: "Ingesting and processing your documents...", progress: PROGRESS_MAP.ingesting },
   ingestion_failed: { message: "Failed to ingest documents - please try again", progress: 0 },
-  embeddings_created: { message: "Generated AI embeddings for semantic search", progress: 90 },
-  completed: { message: "Pipeline completed successfully! ✨", progress: 100 },
+  embeddings_created: { message: "Generated AI embeddings for semantic search", progress: PROGRESS_MAP.embeddings_created },
+  completed: { message: "Pipeline completed successfully! ✨", progress: PROGRESS_MAP.completed },
   failed: { message: "Pipeline encountered an error", progress: 0 },
   cancelled: { message: "Pipeline was cancelled", progress: 0 },
 };
@@ -87,9 +126,11 @@ export default function Pipeline() {
                 description: "The pipeline ran successfully",
               });
             } 
-            // Terminal error states
-            else if (status === 'failed' || status === 'validation_failed' || status === 'ingestion_failed' || status === 'cancelled') {
+            // Terminal error states - stop everything
+            else if (TERMINAL_ERROR_STATUSES.includes(status)) {
               setIsRunning(false);
+              setProgress(0);
+              setProgressMessage("");
               setRuns(prevRuns => prevRuns.map(run => 
                 run.id === currentRunId 
                   ? { ...run, status: "failed" as const, duration: "Failed" }

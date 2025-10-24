@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Upload, File, Trash2, Download, HardDrive } from "lucide-react";
+import { Upload, File, Trash2, Download, HardDrive, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/lib/supabase";
 import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 import { calculateFileChecksum } from "@/utils/fileHash";
 import { usePipeline } from "@/contexts/PipelineContext";
 import { BUCKET_NAME } from "@/constants/storage";
@@ -12,7 +13,8 @@ import { BUCKET_NAME } from "@/constants/storage";
 interface UploadingFile {
   id: string;
   name: string;
-  progress: number;
+  size: number;
+  status: 'uploading' | 'completed' | 'failed';
 }
 
 const ALLOWED_FILE_TYPES = {
@@ -76,6 +78,11 @@ export default function Files() {
 
   const uploadFileToStorage = async (file: File, uploadingFileId: string) => {
     try {
+      // Update status to uploading
+      setUploadingFiles((prev) =>
+        prev.map((f) => (f.id === uploadingFileId ? { ...f, status: 'uploading' as const } : f))
+      );
+
       // Validate file type
       const contentType = getContentType(file.name);
       if (!contentType) {
@@ -155,11 +162,18 @@ export default function Files() {
       // Add file ID to pipeline context and refresh files from database
       if (insertedFile?.id) {
         addFileId(insertedFile.id);
-        await fetchFiles(); // Fetch all files to ensure context is in sync with database
+        await fetchFiles();
       }
 
-      // Remove from uploading files
-      setUploadingFiles((prev) => prev.filter((f) => f.id !== uploadingFileId));
+      // Mark as completed and remove after a brief display
+      setUploadingFiles((prev) =>
+        prev.map((f) => (f.id === uploadingFileId ? { ...f, status: 'completed' as const } : f))
+      );
+
+      // Remove after 1 second to show completion state
+      setTimeout(() => {
+        setUploadingFiles((prev) => prev.filter((f) => f.id !== uploadingFileId));
+      }, 1000);
 
       toast({
         title: "Upload successful",
@@ -168,8 +182,15 @@ export default function Files() {
     } catch (error) {
       console.error("Upload error:", error);
 
-      // Remove from uploading files
-      setUploadingFiles((prev) => prev.filter((f) => f.id !== uploadingFileId));
+      // Mark as failed
+      setUploadingFiles((prev) =>
+        prev.map((f) => (f.id === uploadingFileId ? { ...f, status: 'failed' as const } : f))
+      );
+
+      // Remove after 2 seconds
+      setTimeout(() => {
+        setUploadingFiles((prev) => prev.filter((f) => f.id !== uploadingFileId));
+      }, 2000);
 
       toast({
         title: "Upload failed",
@@ -194,30 +215,21 @@ export default function Files() {
       return;
     }
 
-    // Create uploading file items for progress tracking
+    // Create uploading file items for tracking
     const uploadingFileItems: UploadingFile[] = newFiles.map((file) => ({
       id: Math.random().toString(36).substr(2, 9),
       name: file.name,
-      progress: 0,
+      size: file.size,
+      status: 'uploading' as const,
     }));
 
-    // Add to uploading files state
+    // Add all files to uploading state at once
     setUploadingFiles((prev) => [...uploadingFileItems, ...prev]);
 
-    // Start uploading each file
-    uploadingFileItems.forEach((fileItem, index) => {
-      // Simulate progress for UI feedback
-      const progressInterval = setInterval(() => {
-        setUploadingFiles((prev) =>
-          prev.map((f) => (f.id === fileItem.id ? { ...f, progress: Math.min(f.progress + 10, 90) } : f)),
-        );
-      }, 200);
-
-      // Upload file
-      uploadFileToStorage(newFiles[index], fileItem.id).finally(() => {
-        clearInterval(progressInterval);
-      });
-    });
+    // Upload files sequentially
+    for (let i = 0; i < newFiles.length; i++) {
+      await uploadFileToStorage(newFiles[i], uploadingFileItems[i].id);
+    }
   };
 
   const handleGoogleDriveUpload = () => {
@@ -375,14 +387,44 @@ export default function Files() {
       <Card>
         <CardHeader>
           <CardTitle>Uploaded Files</CardTitle>
-          <CardDescription>{files.length} file(s) in storage</CardDescription>
+          <CardDescription>
+            {files.length} file(s) in storage
+            {uploadingFiles.length > 0 && ` • ${uploadingFiles.length} uploading`}
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          {files.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">No files uploaded yet</div>
-          ) : (
-            <div className="space-y-2">
-              {files.map((file) => (
+          <div className="space-y-2">
+            {/* Show uploading files first */}
+            {uploadingFiles.map((file) => (
+              <div
+                key={file.id}
+                className="flex items-center justify-between p-4 rounded-lg border bg-card"
+              >
+                <div className="flex items-center gap-4 flex-1">
+                  {file.status === 'uploading' ? (
+                    <Loader2 className="h-8 w-8 text-primary animate-spin" />
+                  ) : file.status === 'completed' ? (
+                    <File className="h-8 w-8 text-green-500" />
+                  ) : (
+                    <File className="h-8 w-8 text-destructive" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{file.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {file.status === 'uploading' && `Currently uploading...`}
+                      {file.status === 'completed' && `Upload complete!`}
+                      {file.status === 'failed' && `Upload failed`}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+
+            {/* Show uploaded files */}
+            {files.length === 0 && uploadingFiles.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">No files uploaded yet</div>
+            ) : (
+              files.map((file) => (
                 <div
                   key={file.id}
                   className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
@@ -406,9 +448,9 @@ export default function Files() {
                     </Button>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
+              ))
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>
