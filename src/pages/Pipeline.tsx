@@ -40,11 +40,11 @@ export default function Pipeline() {
   const [progress, setProgress] = useState(0);
   const [progressMessage, setProgressMessage] = useState("");
   const [runs, setRuns] = useState<PipelineRun[]>([]);
-  const [currentJobId, setCurrentJobId] = useState<string | null>(null);
+  const [currentRunId, setCurrentRunId] = useState<string | null>(null);
 
   // Listen to job status updates via Supabase realtime
   useEffect(() => {
-    if (!supabase || !currentJobId) return;
+    if (!supabase || !isRunning) return;
 
     const channel = supabase
       .channel('job-updates')
@@ -66,8 +66,8 @@ export default function Pipeline() {
 
           const job = payload.new as any;
           
-          // Only process if it matches our workspace_id and current job
-          if (job.workspace_id === workspaceId && job.id === currentJobId) {
+          // Only process if it matches our workspace_id
+          if (job.workspace_id === workspaceId) {
             const status = job.status as string;
             const statusInfo = JOB_STATUS_MESSAGES[status] || JOB_STATUS_MESSAGES.started;
             
@@ -77,9 +77,8 @@ export default function Pipeline() {
             // Handle completion or failure
             if (status === 'completed') {
               setIsRunning(false);
-              setCurrentJobId(null);
               setRuns(prevRuns => prevRuns.map(run => 
-                run.id === currentJobId 
+                run.id === currentRunId 
                   ? { ...run, status: "success" as const, duration: "Completed" }
                   : run
               ));
@@ -89,9 +88,8 @@ export default function Pipeline() {
               });
             } else if (status === 'failed' || status === 'error') {
               setIsRunning(false);
-              setCurrentJobId(null);
               setRuns(prevRuns => prevRuns.map(run => 
-                run.id === currentJobId 
+                run.id === currentRunId 
                   ? { ...run, status: "failed" as const, duration: "Failed" }
                   : run
               ));
@@ -109,7 +107,7 @@ export default function Pipeline() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentJobId, workspaceId, toast]);
+  }, [isRunning, workspaceId, toast, currentRunId]);
 
   const handleTrigger = async () => {
     // Check if files are available
@@ -133,6 +131,7 @@ export default function Pipeline() {
       trigger: "Manual"
     };
 
+    setCurrentRunId(newRun.id);
     setRuns([newRun, ...runs]);
 
     try {
@@ -146,46 +145,33 @@ export default function Pipeline() {
       setProgressMessage("Sending request to pipeline...");
       setProgress(20);
 
-      // Make API call
-      const response = await fetch(API_ENDPOINTS.PIPELINE_TRIGGER, {
+      // Trigger pipeline asynchronously - don't wait for job_id
+      fetch(API_ENDPOINTS.PIPELINE_TRIGGER, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          // 'Authorization': `Bearer ${token}`, // TODO: Add token when available
         },
         body: JSON.stringify(payload),
+      }).catch(error => {
+        console.error('Pipeline trigger error:', error);
+        setIsRunning(false);
+        setRuns(prevRuns => prevRuns.map(run => 
+          run.id === newRun.id 
+            ? { ...run, status: "failed" as const, duration: "Failed" }
+            : run
+        ));
+        toast({
+          title: "Pipeline failed",
+          description: error instanceof Error ? error.message : "Failed to trigger pipeline",
+          variant: "destructive",
+        });
       });
 
-      setProgress(60);
-      setProgressMessage("Processing pipeline response...");
-
-      const result = await response.json();
-
-      // If API returns a job_id, track it for realtime updates
-      if (result.job_id) {
-        setCurrentJobId(result.job_id);
-        setProgressMessage("Job created! Waiting for status updates...");
-      } else {
-        // Fallback to old behavior if no job_id
-        setProgress(100);
-        if (result.success === true) {
-          setIsRunning(false);
-          setRuns(prevRuns => prevRuns.map(run => 
-            run.id === newRun.id 
-              ? { ...run, status: "success" as const, duration: "Completed" }
-              : run
-          ));
-          toast({
-            title: "Pipeline completed successfully",
-            description: "The pipeline ran successfully",
-          });
-        } else {
-          throw new Error(result.message || 'Pipeline execution failed');
-        }
-      }
+      // Immediately start listening for updates
+      setProgressMessage("Waiting for pipeline updates...");
+      setProgress(15);
     } catch (error) {
       setIsRunning(false);
-      setCurrentJobId(null);
       setRuns(prevRuns => prevRuns.map(run => 
         run.id === newRun.id 
           ? { ...run, status: "failed" as const, duration: "Failed" }
@@ -193,7 +179,7 @@ export default function Pipeline() {
       ));
       toast({
         title: "Pipeline failed",
-        description: error instanceof Error ? error.message : "Failed to run pipeline",
+        description: error instanceof Error ? error.message : "Failed to trigger pipeline",
         variant: "destructive",
       });
     }
