@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
 import { Send, Loader2, Bot, UserCircle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import brainLogo from "@/assets/brain-logo.png";
 import { cn } from "@/lib/utils";
 
@@ -12,6 +13,7 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
+  usedEmbeddings?: boolean;
 }
 
 interface ChatAssistantProps {
@@ -79,6 +81,7 @@ export default function ChatAssistant({
         role: "assistant",
         content: data.response || data.answer || "I couldn't generate a response.",
         timestamp: new Date(),
+        usedEmbeddings: data.used_embeddings || false,
       };
       setMessages((prev) => [...prev, assistantMessage]);
     } catch (error) {
@@ -176,17 +179,32 @@ export default function ChatAssistant({
                     style={message.role === "user" ? { backgroundColor: primaryColor } : undefined}
                   >
                     <p className="text-sm leading-relaxed whitespace-pre-wrap" style={{ fontFamily: message.role === "user" ? primaryFont : secondaryFont }}>{message.content}</p>
-                    <p
-                      className={cn(
-                        "text-xs mt-2",
-                        message.role === "user" ? "text-white/70" : "text-muted-foreground"
+                    <div className="flex items-center gap-2 mt-2">
+                      <p
+                        className={cn(
+                          "text-xs",
+                          message.role === "user" ? "text-white/70" : "text-muted-foreground"
+                        )}
+                      >
+                        {message.timestamp.toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </p>
+                      {message.role === "assistant" && message.usedEmbeddings !== undefined && (
+                        <Badge 
+                          variant="outline" 
+                          className="text-[10px] px-1.5 py-0 h-4"
+                          style={{
+                            borderColor: message.usedEmbeddings ? `${primaryColor}40` : `${secondaryColor}40`,
+                            backgroundColor: message.usedEmbeddings ? `${primaryColor}10` : `${secondaryColor}10`,
+                            color: message.usedEmbeddings ? primaryColor : secondaryColor,
+                          }}
+                        >
+                          {message.usedEmbeddings ? "Context Used" : "No Context"}
+                        </Badge>
                       )}
-                    >
-                      {message.timestamp.toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </p>
+                    </div>
                   </div>
                   {message.role === "user" && (
                     <div 
@@ -213,17 +231,15 @@ export default function ChatAssistant({
                       backgroundSize: "200% 100%",
                     }}
                   />
-                  <div className="bg-muted border rounded-2xl px-4 py-3 shadow-sm">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm text-muted-foreground flex items-center">
-                        Thinking
-                        <span className="inline-flex ml-0.5">
-                          <span className="animate-bounce" style={{ animationDelay: "0ms", animationDuration: "1.4s" }}>.</span>
-                          <span className="animate-bounce" style={{ animationDelay: "200ms", animationDuration: "1.4s" }}>.</span>
-                          <span className="animate-bounce" style={{ animationDelay: "400ms", animationDuration: "1.4s" }}>.</span>
-                        </span>
+                  <div className="bg-muted border rounded-2xl px-3 py-2 shadow-sm">
+                    <span className="text-xs text-muted-foreground flex items-center" style={{ fontFamily: secondaryFont }}>
+                      Thinking
+                      <span className="inline-flex ml-0.5">
+                        <span className="animate-bounce" style={{ animationDelay: "0ms", animationDuration: "1.4s" }}>.</span>
+                        <span className="animate-bounce" style={{ animationDelay: "200ms", animationDuration: "1.4s" }}>.</span>
+                        <span className="animate-bounce" style={{ animationDelay: "400ms", animationDuration: "1.4s" }}>.</span>
                       </span>
-                    </div>
+                    </span>
                   </div>
                 </div>
               )}
