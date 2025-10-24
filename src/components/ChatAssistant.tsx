@@ -78,8 +78,6 @@ export default function ChatAssistant({
 
       const data = await response.json();
 
-      console.log(data);
-
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
