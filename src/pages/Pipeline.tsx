@@ -6,6 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { Play, StopCircle, Clock, CheckCircle2, XCircle, RefreshCw, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { usePipeline } from "@/contexts/PipelineContext";
+import { API_ENDPOINTS } from "@/constants/api";
 
 interface PipelineRun {
   id: string;
@@ -59,7 +60,7 @@ export default function Pipeline() {
       setProgress(20);
 
       // Make API call
-      const response = await fetch('https://knowledge-assistant.app.n8n.cloud/webhook-test/trigger-pipeline', {
+      const response = await fetch(API_ENDPOINTS.PIPELINE_TRIGGER, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

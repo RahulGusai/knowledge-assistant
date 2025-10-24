@@ -7,6 +7,7 @@ import { Send, Loader2, Bot, UserCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import brainLogo from "@/assets/brain-logo.png";
 import { cn } from "@/lib/utils";
+import { API_ENDPOINTS } from "@/constants/api";
 
 interface Message {
   id: string;
@@ -60,7 +61,7 @@ export default function ChatAssistant({
     setIsLoading(true);
 
     try {
-      const response = await fetch("https://rag-query-180483052401.us-east1.run.app/query", {
+      const response = await fetch(API_ENDPOINTS.RAG_QUERY, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
