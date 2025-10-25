@@ -113,13 +113,11 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
+      if (event === 'SIGNED_IN' && session?.user && !workspaceId) {
         // Only load if we don't have a workspace yet
-        if (!workspaceId) {
-          setTimeout(() => {
-            loadWorkspaceId();
-          }, 0);
-        }
+        setTimeout(() => {
+          loadWorkspaceId();
+        }, 0);
       } else if (event === 'SIGNED_OUT') {
         clearWorkspace();
         setLoadingWorkspace(false);
@@ -127,7 +125,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [workspaceId]);
 
   return (
     <AppContext.Provider
