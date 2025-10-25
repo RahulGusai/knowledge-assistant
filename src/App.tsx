@@ -35,8 +35,8 @@ const App = () => (
               <Route
                 path="*"
                 element={
-                  <ProtectedRoute>
-                    <WorkspaceLoader>
+                  // <ProtectedRoute>
+                  //   <WorkspaceLoader>
                       <DashboardLayout>
                         <Routes>
                           <Route path="/home" element={<Dashboard />} />
@@ -49,8 +49,8 @@ const App = () => (
                           <Route path="*" element={<NotFound />} />
                         </Routes>
                       </DashboardLayout>
-                    </WorkspaceLoader>
-                  </ProtectedRoute>
+                  //   </WorkspaceLoader>
+                  // </ProtectedRoute>
                 }
               />
               </Routes>
