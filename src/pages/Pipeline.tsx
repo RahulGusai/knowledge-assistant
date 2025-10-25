@@ -6,6 +6,7 @@ import { Progress } from "@/components/ui/progress";
 import { Play, StopCircle, Clock, CheckCircle2, XCircle, RefreshCw, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { usePipeline } from "@/contexts/PipelineContext";
+import { useAppContext } from "@/contexts/AppContext";
 import { API_ENDPOINTS } from "@/constants/api";
 import { supabase } from "@/lib/supabase";
 
@@ -54,7 +55,8 @@ const JOB_STATUS_MESSAGES: Record<string, { message: string; progress: number }>
 
 export default function Pipeline() {
   const { toast } = useToast();
-  const { fileIds, workspaceId, triggerBy } = usePipeline();
+  const { fileIds, triggerBy } = usePipeline();
+  const { workspaceId } = useAppContext();
   const [isRunning, setIsRunning] = useState(false);
   const [progress, setProgress] = useState(0);
   const [progressMessage, setProgressMessage] = useState("");

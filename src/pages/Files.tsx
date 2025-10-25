@@ -8,6 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { calculateFileChecksum } from "@/utils/fileHash";
 import { usePipeline } from "@/contexts/PipelineContext";
+import { useAppContext } from "@/contexts/AppContext";
 import { BUCKET_NAME } from "@/constants/storage";
 
 interface UploadingFile {
@@ -38,7 +39,8 @@ export default function Files() {
   const [isDragging, setIsDragging] = useState(false);
   const [isGoogleDriveConnected, setIsGoogleDriveConnected] = useState(false);
   const { toast } = useToast();
-  const { addFileId, setTriggerBy, files, fetchFiles, workspaceId } = usePipeline();
+  const { addFileId, setTriggerBy, files, fetchFiles } = usePipeline();
+  const { workspaceId } = useAppContext();
 
   useEffect(() => {
     const storedConnection = localStorage.getItem("googleDriveConnected");

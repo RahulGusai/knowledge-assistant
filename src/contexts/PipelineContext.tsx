@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
+import { useAppContext } from './AppContext';
 
 interface FileItem {
   id: string;
@@ -12,14 +13,12 @@ interface FileItem {
 
 interface PipelineContextType {
   fileIds: string[];
-  workspaceId: string | null;
   triggerBy: string | null;
   addFileId: (fileId: string) => void;
   clearFileIds: () => void;
   setTriggerBy: (userId: string) => void;
   files: FileItem[];
   fetchFiles: () => Promise<void>;
-  loadWorkspaceId: () => Promise<void>;
 }
 
 const PipelineContext = createContext<PipelineContextType | undefined>(undefined);
@@ -33,45 +32,10 @@ export const usePipeline = () => {
 };
 
 export const PipelineProvider = ({ children }: { children: ReactNode }) => {
+  const { workspaceId } = useAppContext();
   const [fileIds, setFileIds] = useState<string[]>([]);
-  const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const [triggerBy, setTriggerBy] = useState<string | null>(null);
   const [files, setFiles] = useState<FileItem[]>([]);
-
-  const loadWorkspaceId = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
-        console.log('No session found when loading workspace');
-        return;
-      }
-
-      console.log('Fetching workspace for user_id:', session.user.id);
-
-      const { data, error } = await supabase
-        .from('workspace_users')
-        .select('workspace_id')
-        .eq('user_id', session.user.id)
-        .limit(1);
-
-      console.log('Workspace query response:', { data, error });
-
-      if (error) {
-        console.error('Error fetching workspace_id:', error);
-        return;
-      }
-      
-      if (data && data.length > 0 && data[0]?.workspace_id) {
-        console.log('Setting workspace_id:', data[0].workspace_id);
-        setWorkspaceId(data[0].workspace_id);
-        console.log('Workspace ID loaded successfully:', data[0].workspace_id);
-      } else {
-        console.warn('No workspace found for user');
-      }
-    } catch (error) {
-      console.error('Error in loadWorkspaceId:', error);
-    }
-  };
 
   const fetchFiles = async () => {
     if (!workspaceId) return;
@@ -92,31 +56,6 @@ export const PipelineProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  // Auto-load workspace when user session exists
-  useEffect(() => {
-    const initWorkspace = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user && !workspaceId) {
-        console.log('Auto-loading workspace for authenticated user');
-        await loadWorkspaceId();
-      }
-    };
-
-    initWorkspace();
-
-    // Listen for auth changes to load workspace
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (session?.user && !workspaceId) {
-        console.log('Auth state changed, loading workspace');
-        loadWorkspaceId();
-      } else if (event === 'SIGNED_OUT') {
-        setWorkspaceId(null);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
   useEffect(() => {
     if (workspaceId) {
       fetchFiles();
@@ -135,14 +74,12 @@ export const PipelineProvider = ({ children }: { children: ReactNode }) => {
     <PipelineContext.Provider
       value={{
         fileIds,
-        workspaceId,
         triggerBy,
         addFileId,
         clearFileIds,
         setTriggerBy,
         files,
         fetchFiles,
-        loadWorkspaceId,
       }}
     >
       {children}

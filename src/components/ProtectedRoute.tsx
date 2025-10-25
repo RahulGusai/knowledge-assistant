@@ -18,15 +18,6 @@ const validateSession = async () => {
       return false;
     }
     
-    // Verify token is still valid by attempting to refresh
-    const { data: { session: refreshedSession }, error: refreshError } = 
-      await supabase.auth.refreshSession();
-    
-    if (refreshError || !refreshedSession) {
-      console.error('Token refresh failed:', refreshError);
-      return false;
-    }
-    
     return true;
   } catch (error) {
     console.error('Session validation failed:', error);

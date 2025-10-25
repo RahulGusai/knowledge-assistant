@@ -18,7 +18,7 @@ interface Message {
   responseTime?: number;
 }
 
-import { usePipeline } from "@/contexts/PipelineContext";
+import { useAppContext } from "@/contexts/AppContext";
 
 interface ChatAssistantProps {
   brandName?: string;
@@ -42,7 +42,7 @@ export default function ChatAssistant({
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const { workspaceId } = usePipeline();
+  const { workspaceId } = useAppContext();
 
   useEffect(() => {
     if (scrollRef.current) {
