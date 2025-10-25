@@ -2,61 +2,35 @@ import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 
-const validateSession = async () => {
-  if (!supabase) return false;
-
-  try {
-    const { data: { session }, error } = await supabase.auth.getSession();
-    
-    if (error) {
-      console.error('Session validation error:', error);
-      return false;
-    }
-    
-    if (!session) {
-      console.log('No session found');
-      return false;
-    }
-    
-    return true;
-  } catch (error) {
-    console.error('Session validation failed:', error);
-    return false;
-  }
-};
-
 export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const [loading, setLoading] = useState(true);
-  const [authenticated, setAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
 
   useEffect(() => {
-    // Validate session on component mount
-    validateSession().then((isValid) => {
-      setAuthenticated(isValid);
-      setLoading(false);
-    });
+    const checkSession = async () => {
+      if (!supabase) {
+        setIsAuthenticated(false);
+        setIsLoading(false);
+        return;
+      }
 
-    // Listen for auth changes
+      const { data } = await supabase.auth.getSession();
+      setIsAuthenticated(!!data.session);
+      setIsLoading(false);
+    };
+
+    checkSession();
+
     if (supabase) {
-      const {
-        data: { subscription },
-      } = supabase.auth.onAuthStateChange(async (event, session) => {
-        if (event === 'SIGNED_OUT') {
-          setAuthenticated(false);
-        } else if (session) {
-          const isValid = await validateSession();
-          setAuthenticated(isValid);
-        } else {
-          setAuthenticated(false);
-        }
-        setLoading(false);
+      const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+        setIsAuthenticated(!!session);
       });
 
-      return () => subscription.unsubscribe();
+      return () => listener.subscription.unsubscribe();
     }
   }, []);
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -64,7 +38,7 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
     );
   }
 
-  if (!authenticated) {
+  if (!isAuthenticated) {
     return <Navigate to="/auth" replace />;
   }
 

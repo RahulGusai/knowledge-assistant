@@ -35,22 +35,22 @@ const App = () => (
                 <Route
                   path="*"
                   element={
-                    // <ProtectedRoute>
-                    <WorkspaceLoader>
-                      <DashboardLayout>
-                        <Routes>
-                          <Route path="/home" element={<Dashboard />} />
-                          <Route path="/files" element={<Files />} />
-                          <Route path="/integrations" element={<Integrations />} />
-                          <Route path="/branding" element={<Branding />} />
-                          <Route path="/pipeline" element={<Pipeline />} />
-                          <Route path="/assistant" element={<Assistant />} />
-                          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                          <Route path="*" element={<NotFound />} />
-                        </Routes>
-                      </DashboardLayout>
-                    </WorkspaceLoader>
-                    // </ProtectedRoute>
+                    <ProtectedRoute>
+                      <WorkspaceLoader>
+                        <DashboardLayout>
+                          <Routes>
+                            <Route path="/home" element={<Dashboard />} />
+                            <Route path="/files" element={<Files />} />
+                            <Route path="/integrations" element={<Integrations />} />
+                            <Route path="/branding" element={<Branding />} />
+                            <Route path="/pipeline" element={<Pipeline />} />
+                            <Route path="/assistant" element={<Assistant />} />
+                            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                            <Route path="*" element={<NotFound />} />
+                          </Routes>
+                        </DashboardLayout>
+                      </WorkspaceLoader>
+                    </ProtectedRoute>
                   }
                 />
               </Routes>
