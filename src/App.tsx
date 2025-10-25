@@ -30,13 +30,13 @@ const App = () => (
             <Sonner />
             <BrowserRouter>
               <Routes>
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/" element={<Navigate to="/home" replace />} />
-              <Route
-                path="*"
-                element={
-                  // <ProtectedRoute>
-                  //   <WorkspaceLoader>
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/" element={<Navigate to="/home" replace />} />
+                <Route
+                  path="*"
+                  element={
+                    // <ProtectedRoute>
+                    <WorkspaceLoader>
                       <DashboardLayout>
                         <Routes>
                           <Route path="/home" element={<Dashboard />} />
@@ -49,10 +49,10 @@ const App = () => (
                           <Route path="*" element={<NotFound />} />
                         </Routes>
                       </DashboardLayout>
-                  //   </WorkspaceLoader>
-                  // </ProtectedRoute>
-                }
-              />
+                    </WorkspaceLoader>
+                    // </ProtectedRoute>
+                  }
+                />
               </Routes>
             </BrowserRouter>
           </PipelineProvider>
