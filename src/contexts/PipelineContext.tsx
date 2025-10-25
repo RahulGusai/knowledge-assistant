@@ -46,11 +46,15 @@ export const PipelineProvider = ({ children }: { children: ReactNode }) => {
         return;
       }
 
+      console.log('Fetching workspace for user_id:', session.user.id);
+
       const { data, error } = await supabase
         .from('workspace_users')
         .select('workspace_id')
         .eq('user_id', session.user.id)
         .limit(1);
+
+      console.log('Workspace query response:', { data, error });
 
       if (error) {
         console.error('Error fetching workspace_id:', error);
@@ -58,8 +62,9 @@ export const PipelineProvider = ({ children }: { children: ReactNode }) => {
       }
       
       if (data && data.length > 0 && data[0]?.workspace_id) {
+        console.log('Setting workspace_id:', data[0].workspace_id);
         setWorkspaceId(data[0].workspace_id);
-        console.log('Workspace ID loaded:', data[0].workspace_id);
+        console.log('Workspace ID loaded successfully:', data[0].workspace_id);
       } else {
         console.warn('No workspace found for user');
       }
