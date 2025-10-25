@@ -2,12 +2,9 @@ import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 
-// Preview mode flag - bypasses authentication in preview/development
-const isPreviewMode = window.location.hostname.includes('lovable.app') || 
-                      window.location.hostname === 'localhost' ||
-                      window.location.search.includes('preview=true');
-
 const validateSession = async () => {
+  if (!supabase) return false;
+
   try {
     const { data: { session }, error } = await supabase.auth.getSession();
     
@@ -17,6 +14,7 @@ const validateSession = async () => {
     }
     
     if (!session) {
+      console.log('No session found');
       return false;
     }
     
@@ -41,13 +39,6 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
   const [authenticated, setAuthenticated] = useState(false);
 
   useEffect(() => {
-    // Skip authentication check in preview mode
-    if (isPreviewMode) {
-      setAuthenticated(true);
-      setLoading(false);
-      return;
-    }
-
     // Validate session on component mount
     validateSession().then((isValid) => {
       setAuthenticated(isValid);
@@ -55,14 +46,23 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
     });
 
     // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      setAuthenticated(!!session);
-      setLoading(false);
-    });
+    if (supabase) {
+      const {
+        data: { subscription },
+      } = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (event === 'SIGNED_OUT') {
+          setAuthenticated(false);
+        } else if (session) {
+          const isValid = await validateSession();
+          setAuthenticated(isValid);
+        } else {
+          setAuthenticated(false);
+        }
+        setLoading(false);
+      });
 
-    return () => subscription.unsubscribe();
+      return () => subscription.unsubscribe();
+    }
   }, []);
 
   if (loading) {
