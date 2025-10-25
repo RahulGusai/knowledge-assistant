@@ -10,8 +10,10 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { usePipeline } from "@/contexts/PipelineContext";
 
 export default function Auth() {
+  const { loadWorkspaceId } = usePipeline();
   const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -23,8 +25,9 @@ export default function Auth() {
     if (!isSupabaseConfigured || !supabase) return;
 
     // Check if user is already logged in
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session) {
+        await loadWorkspaceId();
         navigate("/home");
       }
     });
@@ -32,14 +35,15 @@ export default function Auth() {
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session) {
+        await loadWorkspaceId();
         navigate("/home");
       }
     });
 
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [navigate, loadWorkspaceId]);
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();

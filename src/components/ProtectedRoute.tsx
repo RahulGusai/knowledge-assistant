@@ -7,6 +7,35 @@ const isPreviewMode = window.location.hostname.includes('lovable.app') ||
                       window.location.hostname === 'localhost' ||
                       window.location.search.includes('preview=true');
 
+const validateSession = async () => {
+  try {
+    const { data: { session }, error } = await supabase.auth.getSession();
+    
+    if (error) {
+      console.error('Session validation error:', error);
+      return false;
+    }
+    
+    if (!session) {
+      return false;
+    }
+    
+    // Verify token is still valid by attempting to refresh
+    const { data: { session: refreshedSession }, error: refreshError } = 
+      await supabase.auth.refreshSession();
+    
+    if (refreshError || !refreshedSession) {
+      console.error('Token refresh failed:', refreshError);
+      return false;
+    }
+    
+    return true;
+  } catch (error) {
+    console.error('Session validation failed:', error);
+    return false;
+  }
+};
+
 export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
@@ -19,9 +48,9 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
       return;
     }
 
-    // Check current session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setAuthenticated(!!session);
+    // Validate session on component mount
+    validateSession().then((isValid) => {
+      setAuthenticated(isValid);
       setLoading(false);
     });
 

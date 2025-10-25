@@ -18,6 +18,8 @@ interface Message {
   responseTime?: number;
 }
 
+import { usePipeline } from "@/contexts/PipelineContext";
+
 interface ChatAssistantProps {
   brandName?: string;
   primaryColor?: string;
@@ -40,6 +42,7 @@ export default function ChatAssistant({
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const { workspaceId } = usePipeline();
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -48,7 +51,7 @@ export default function ChatAssistant({
   }, [messages]);
 
   const handleSendMessage = async () => {
-    if (!input.trim() || isLoading) return;
+    if (!input.trim() || isLoading || !workspaceId) return;
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -70,7 +73,7 @@ export default function ChatAssistant({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          workspace_id: "37926ce6-9757-4667-bf16-b438d6bc95b1",
+          workspace_id: workspaceId,
           query: userMessage.content,
         }),
       });

@@ -12,13 +12,14 @@ interface FileItem {
 
 interface PipelineContextType {
   fileIds: string[];
-  workspaceId: string;
+  workspaceId: string | null;
   triggerBy: string | null;
   addFileId: (fileId: string) => void;
   clearFileIds: () => void;
   setTriggerBy: (userId: string) => void;
   files: FileItem[];
   fetchFiles: () => Promise<void>;
+  loadWorkspaceId: () => Promise<void>;
 }
 
 const PipelineContext = createContext<PipelineContextType | undefined>(undefined);
@@ -33,11 +34,35 @@ export const usePipeline = () => {
 
 export const PipelineProvider = ({ children }: { children: ReactNode }) => {
   const [fileIds, setFileIds] = useState<string[]>([]);
-  const [workspaceId] = useState<string>('37926ce6-9757-4667-bf16-b438d6bc95b1');
+  const [workspaceId, setWorkspaceId] = useState<string | null>(null);
   const [triggerBy, setTriggerBy] = useState<string | null>(null);
   const [files, setFiles] = useState<FileItem[]>([]);
 
+  const loadWorkspaceId = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+
+      const { data, error } = await supabase
+        .from('workspace_users')
+        .select('workspace_id')
+        .eq('user_id', session.user.id)
+        .limit(1)
+        .single();
+
+      if (error) throw error;
+      
+      if (data?.workspace_id) {
+        setWorkspaceId(data.workspace_id);
+      }
+    } catch (error) {
+      console.error('Error fetching workspace_id:', error);
+    }
+  };
+
   const fetchFiles = async () => {
+    if (!workspaceId) return;
+    
     try {
       const { data, error } = await supabase
         .from('files')
@@ -55,8 +80,10 @@ export const PipelineProvider = ({ children }: { children: ReactNode }) => {
   };
 
   useEffect(() => {
-    fetchFiles();
-  }, []);
+    if (workspaceId) {
+      fetchFiles();
+    }
+  }, [workspaceId]);
 
   const addFileId = (fileId: string) => {
     setFileIds(prev => [...prev, fileId]);
@@ -77,6 +104,7 @@ export const PipelineProvider = ({ children }: { children: ReactNode }) => {
         setTriggerBy,
         files,
         fetchFiles,
+        loadWorkspaceId,
       }}
     >
       {children}

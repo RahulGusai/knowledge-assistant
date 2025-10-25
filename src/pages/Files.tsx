@@ -38,7 +38,7 @@ export default function Files() {
   const [isDragging, setIsDragging] = useState(false);
   const [isGoogleDriveConnected, setIsGoogleDriveConnected] = useState(false);
   const { toast } = useToast();
-  const { addFileId, setTriggerBy, files, fetchFiles } = usePipeline();
+  const { addFileId, setTriggerBy, files, fetchFiles, workspaceId } = usePipeline();
 
   useEffect(() => {
     const storedConnection = localStorage.getItem("googleDriveConnected");
@@ -109,7 +109,7 @@ export default function Files() {
         body: JSON.stringify({
           fileName: file.name,
           contentType: contentType,
-          folder: session.user.id,
+          folder: workspaceId || session.user.id,
         }),
       });
 
@@ -135,7 +135,7 @@ export default function Files() {
 
       // Step 3: Calculate checksum and insert into database
       const checksum = await calculateFileChecksum(file);
-      const storagePath = `${session.user.id}/${file.name}`;
+      const storagePath = `${workspaceId || session.user.id}/${file.name}`;
 
       const { data: insertedFile, error: dbError } = await supabase
         .from("files")
@@ -148,7 +148,7 @@ export default function Files() {
           storage_path: storagePath,
           checksum: checksum,
           status: "uploaded",
-          workspace_id: "37926ce6-9757-4667-bf16-b438d6bc95b1",
+          workspace_id: workspaceId,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         })

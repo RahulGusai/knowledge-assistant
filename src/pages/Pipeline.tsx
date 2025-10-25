@@ -178,6 +178,16 @@ export default function Pipeline() {
   }, [isRunning, workspaceId, toast, currentRunId, timeoutId]);
 
   const handleTrigger = async () => {
+    // Check if workspace_id is loaded
+    if (!workspaceId) {
+      toast({
+        title: "Workspace not loaded",
+        description: "Please wait for workspace to be loaded",
+        variant: "destructive",
+      });
+      return;
+    }
+
     // Check if files are available
     if (fileIds.length === 0) {
       toast({
