@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Navigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
-import { usePipeline } from "@/contexts/PipelineContext";
 
 const validateSession = async () => {
   if (!supabase) return false;
@@ -38,16 +37,11 @@ const validateSession = async () => {
 export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
-  const { loadWorkspaceId } = usePipeline();
 
   useEffect(() => {
     // Validate session on component mount
     validateSession().then((isValid) => {
       setAuthenticated(isValid);
-      if (isValid) {
-        // Load workspace after successful authentication
-        loadWorkspaceId().catch(console.error);
-      }
       setLoading(false);
     });
 
@@ -61,10 +55,6 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
         } else if (session) {
           const isValid = await validateSession();
           setAuthenticated(isValid);
-          if (isValid) {
-            // Load workspace after successful authentication
-            loadWorkspaceId().catch(console.error);
-          }
         } else {
           setAuthenticated(false);
         }
@@ -73,7 +63,7 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
 
       return () => subscription.unsubscribe();
     }
-  }, [loadWorkspaceId]);
+  }, []);
 
   if (loading) {
     return (

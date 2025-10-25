@@ -92,6 +92,31 @@ export const PipelineProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  // Auto-load workspace when user session exists
+  useEffect(() => {
+    const initWorkspace = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user && !workspaceId) {
+        console.log('Auto-loading workspace for authenticated user');
+        await loadWorkspaceId();
+      }
+    };
+
+    initWorkspace();
+
+    // Listen for auth changes to load workspace
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session?.user && !workspaceId) {
+        console.log('Auth state changed, loading workspace');
+        loadWorkspaceId();
+      } else if (event === 'SIGNED_OUT') {
+        setWorkspaceId(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
   useEffect(() => {
     if (workspaceId) {
       fetchFiles();
