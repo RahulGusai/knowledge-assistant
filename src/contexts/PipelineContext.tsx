@@ -41,22 +41,30 @@ export const PipelineProvider = ({ children }: { children: ReactNode }) => {
   const loadWorkspaceId = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) return;
+      if (!session?.user) {
+        console.log('No session found when loading workspace');
+        return;
+      }
 
       const { data, error } = await supabase
         .from('workspace_users')
         .select('workspace_id')
         .eq('user_id', session.user.id)
-        .limit(1)
-        .single();
+        .limit(1);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching workspace_id:', error);
+        return;
+      }
       
-      if (data?.workspace_id) {
-        setWorkspaceId(data.workspace_id);
+      if (data && data.length > 0 && data[0]?.workspace_id) {
+        setWorkspaceId(data[0].workspace_id);
+        console.log('Workspace ID loaded:', data[0].workspace_id);
+      } else {
+        console.warn('No workspace found for user');
       }
     } catch (error) {
-      console.error('Error fetching workspace_id:', error);
+      console.error('Error in loadWorkspaceId:', error);
     }
   };
 

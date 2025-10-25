@@ -27,7 +27,8 @@ export default function Auth() {
     // Check if user is already logged in
     supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session) {
-        await loadWorkspaceId();
+        // Don't wait for workspace load to navigate
+        loadWorkspaceId().catch(console.error);
         navigate("/home");
       }
     });
@@ -37,7 +38,8 @@ export default function Auth() {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session) {
-        await loadWorkspaceId();
+        // Don't wait for workspace load to navigate
+        loadWorkspaceId().catch(console.error);
         navigate("/home");
       }
     });
