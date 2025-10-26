@@ -36,6 +36,7 @@ const getContentType = (fileName: string): string | null => {
 
 export default function Files() {
   const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
+  const [deletingFiles, setDeletingFiles] = useState<string[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isGoogleDriveConnected, setIsGoogleDriveConnected] = useState(false);
   const { toast } = useToast();
@@ -149,7 +150,7 @@ export default function Files() {
           source: "upload",
           storage_path: storagePath,
           checksum: checksum,
-          status: "uploaded",
+          indexing_status: "pending",
           workspace_id: workspaceId,
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
@@ -242,6 +243,9 @@ export default function Files() {
   };
 
   const handleDelete = async (id: string) => {
+    // Add to deleting state
+    setDeletingFiles((prev) => [...prev, id]);
+
     try {
       // Get current user session
       const {
@@ -308,6 +312,9 @@ export default function Files() {
         variant: "destructive",
         duration: 5000,
       });
+    } finally {
+      // Remove from deleting state
+      setDeletingFiles((prev) => prev.filter((fId) => fId !== id));
     }
   };
 
@@ -426,31 +433,44 @@ export default function Files() {
             {files.length === 0 && uploadingFiles.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">No files uploaded yet</div>
             ) : (
-              files.map((file) => (
-                <div
-                  key={file.id}
-                  className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
-                >
-                  <div className="flex items-center gap-4 flex-1">
-                    <File className="h-8 w-8 text-primary" />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{file.filename}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {(file.size_bytes / 1024 / 1024).toFixed(2)} MB •{" "}
-                        {new Date(file.created_at).toLocaleDateString()}
-                      </p>
+              files.map((file) => {
+                const isDeleting = deletingFiles.includes(file.id);
+                return (
+                  <div
+                    key={file.id}
+                    className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex items-center gap-4 flex-1">
+                      {isDeleting ? (
+                        <Loader2 className="h-8 w-8 text-destructive animate-spin" />
+                      ) : (
+                        <File className="h-8 w-8 text-primary" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{file.filename}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {isDeleting
+                            ? "Deleting..."
+                            : `${(file.size_bytes / 1024 / 1024).toFixed(2)} MB • ${new Date(file.created_at).toLocaleDateString()}`}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 items-center ml-4">
+                      <Button variant="ghost" size="icon" disabled={isDeleting}>
+                        <Download className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDelete(file.id)}
+                        disabled={isDeleting}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
                   </div>
-                  <div className="flex gap-2 items-center ml-4">
-                    <Button variant="ghost" size="icon">
-                      <Download className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={() => handleDelete(file.id)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </CardContent>
