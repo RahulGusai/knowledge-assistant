@@ -55,7 +55,7 @@ const JOB_STATUS_MESSAGES: Record<string, { message: string; progress: number }>
 
 export default function Pipeline() {
   const { toast } = useToast();
-  const { fileIds, triggerBy } = usePipeline();
+  const { files, triggerBy } = usePipeline();
   const { workspaceId } = useAppContext();
   const [isRunning, setIsRunning] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -191,7 +191,7 @@ export default function Pipeline() {
     }
 
     // Check if files are available
-    if (fileIds.length === 0) {
+    if (files.length === 0) {
       toast({
         title: "Cannot run pipeline",
         description: "Please upload files before triggering the pipeline",
@@ -199,6 +199,9 @@ export default function Pipeline() {
       });
       return;
     }
+
+    // Extract file IDs from files
+    const fileIds = files.map(file => file.id);
 
     setIsRunning(true);
     setProgress(0);
@@ -381,7 +384,7 @@ export default function Pipeline() {
                     Running...
                   </Button>
                 </div>
-              ) : fileIds.length === 0 ? (
+              ) : files.length === 0 ? (
                 <div className="space-y-4">
                   <AlertCircle className="h-16 w-16 mx-auto text-muted-foreground" />
                   <div>
@@ -401,7 +404,7 @@ export default function Pipeline() {
                   <div>
                     <p className="text-xl font-semibold mb-2">Ready to Run</p>
                     <p className="text-sm text-muted-foreground">
-                      {fileIds.length} file(s) ready to process
+                      {files.length} file(s) ready to process
                     </p>
                   </div>
                   <Button onClick={handleTrigger} size="lg">
