@@ -3,12 +3,26 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Play, StopCircle, Clock, CheckCircle2, XCircle, RefreshCw, AlertCircle } from "lucide-react";
+import { Play, StopCircle, Clock, CheckCircle2, XCircle, RefreshCw, AlertCircle, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { usePipeline } from "@/contexts/PipelineContext";
+import { usePipeline, JobItem } from "@/contexts/PipelineContext";
 import { useAppContext } from "@/contexts/AppContext";
 import { API_ENDPOINTS } from "@/constants/api";
 import { supabase } from "@/lib/supabase";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface PipelineRun {
   id: string;
@@ -55,7 +69,7 @@ const JOB_STATUS_MESSAGES: Record<string, { message: string; progress: number }>
 
 export default function Pipeline() {
   const { toast } = useToast();
-  const { files, triggerBy } = usePipeline();
+  const { files, triggerBy, jobs, fetchJobs } = usePipeline();
   const { workspaceId } = useAppContext();
   const [isRunning, setIsRunning] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -64,6 +78,9 @@ export default function Pipeline() {
   const [currentRunId, setCurrentRunId] = useState<string | null>(null);
   const [currentStatus, setCurrentStatus] = useState<string>("");
   const [timeoutId, setTimeoutId] = useState<NodeJS.Timeout | null>(null);
+  const [selectedJob, setSelectedJob] = useState<JobItem | null>(null);
+  const [itemsPerPage, setItemsPerPage] = useState(5);
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Get progress bar color based on progress value
   const getProgressVariant = (progress: number): "default" | "accent" | "success" | "warning" => {
@@ -149,6 +166,8 @@ export default function Pipeline() {
                 title: "Pipeline completed successfully",
                 description: "The pipeline ran successfully",
               });
+              // Refresh jobs from database
+              fetchJobs();
             } 
             // Terminal error states or unknown statuses - stop everything
             else if (TERMINAL_ERROR_STATUSES.includes(status) || isUnknownStatus) {
@@ -165,6 +184,8 @@ export default function Pipeline() {
                 description: statusInfo.message,
                 variant: "destructive",
               });
+              // Refresh jobs from database
+              fetchJobs();
             }
           }
         }
@@ -344,6 +365,41 @@ export default function Pipeline() {
     }
   };
 
+  const getJobStatusBadgeColor = (status: JobItem['status']) => {
+    if (status === 'completed') return "bg-gradient-to-r from-success to-success/80 text-success-foreground shadow-lg";
+    if (status === 'failed' || status === 'ingestion_failed' || status === 'validation_failed') return "bg-destructive text-destructive-foreground";
+    if (status === 'cancelled') return "bg-muted text-muted-foreground";
+    return "bg-primary text-primary-foreground";
+  };
+
+  const formatDuration = (duration: string | null) => {
+    if (!duration) return "N/A";
+    
+    const match = duration.match(/(\d+):(\d+):(\d+)/);
+    if (!match) return duration;
+    
+    const hours = parseInt(match[1]);
+    const minutes = parseInt(match[2]);
+    const seconds = parseInt(match[3]);
+    
+    if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+    if (minutes > 0) return `${minutes}m ${seconds}s`;
+    return `${seconds}s`;
+  };
+
+  // Pagination
+  const totalPages = Math.ceil(jobs.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedJobs = jobs.slice(startIndex, endIndex);
+
+  useEffect(() => {
+    // Reset to page 1 if current page exceeds total pages
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(1);
+    }
+  }, [currentPage, totalPages]);
+
   return (
     <div className="space-y-8">
       <div>
@@ -469,34 +525,172 @@ export default function Pipeline() {
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle>Recent Runs</CardTitle>
-          <CardDescription>Pipeline execution history</CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Job History</CardTitle>
+            <CardDescription>Pipeline execution history from database</CardDescription>
+          </div>
+          <Select value={itemsPerPage.toString()} onValueChange={(value) => {
+            setItemsPerPage(parseInt(value));
+            setCurrentPage(1);
+          }}>
+            <SelectTrigger className="w-32">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="5">5 per page</SelectItem>
+              <SelectItem value="10">10 per page</SelectItem>
+              <SelectItem value="20">20 per page</SelectItem>
+              <SelectItem value="50">50 per page</SelectItem>
+            </SelectContent>
+          </Select>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            {runs.map((run) => (
-              <div
-                key={run.id}
-                className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
-              >
-                <div className="flex items-center gap-4">
-                  <Badge className={getStatusColor(run.status)}>
-                    {getStatusIcon(run.status)}
-                    <span className="ml-2 capitalize">{run.status}</span>
-                  </Badge>
-                  <div>
-                    <p className="font-medium">Pipeline Run #{run.id}</p>
-                    <p className="text-sm text-muted-foreground">
-                      {run.startTime} • {run.duration || "In progress"} • Triggered by {run.trigger}
-                    </p>
-                  </div>
-                </div>
+            {paginatedJobs.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No jobs found
               </div>
-            ))}
+            ) : (
+              paginatedJobs.map((job) => (
+                <div
+                  key={job.id}
+                  className="flex items-center justify-between p-4 rounded-lg border bg-card hover:bg-muted/50 transition-colors cursor-pointer"
+                  onClick={() => setSelectedJob(job)}
+                >
+                  <div className="flex items-center gap-4 flex-1">
+                    <Badge className={getJobStatusBadgeColor(job.status)}>
+                      {job.status === 'completed' && <CheckCircle2 className="h-4 w-4" />}
+                      {(job.status === 'failed' || job.status === 'ingestion_failed' || job.status === 'validation_failed') && <XCircle className="h-4 w-4" />}
+                      {job.status === 'cancelled' && <StopCircle className="h-4 w-4" />}
+                      {job.status && !['completed', 'failed', 'ingestion_failed', 'validation_failed', 'cancelled'].includes(job.status) && <RefreshCw className="h-4 w-4" />}
+                      <span className="ml-2 capitalize">{job.status?.replace(/_/g, ' ')}</span>
+                    </Badge>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-medium truncate">
+                        {job.pipeline_version ? `Pipeline v${job.pipeline_version}` : 'Pipeline Job'}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {new Date(job.started_at).toLocaleString()} • 
+                        {job.total_time_taken ? ` ${formatDuration(job.total_time_taken)}` : ' In progress'}
+                      </p>
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="icon" onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedJob(job);
+                  }}>
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))
+            )}
           </div>
+
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 mt-4 pt-4 border-t">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                Page {currentPage} of {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
+
+      {/* Job Details Dialog */}
+      <Dialog open={!!selectedJob} onOpenChange={(open) => !open && setSelectedJob(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Job Details</DialogTitle>
+            <DialogDescription>
+              Detailed information about the pipeline job execution
+            </DialogDescription>
+          </DialogHeader>
+          {selectedJob && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Status</p>
+                  <Badge className={getJobStatusBadgeColor(selectedJob.status)}>
+                    {selectedJob.status?.replace(/_/g, ' ')}
+                  </Badge>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Duration</p>
+                  <p className="text-sm">{formatDuration(selectedJob.total_time_taken)}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Started At</p>
+                  <p className="text-sm">{new Date(selectedJob.started_at).toLocaleString()}</p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Finished At</p>
+                  <p className="text-sm">
+                    {selectedJob.finished_at 
+                      ? new Date(selectedJob.finished_at).toLocaleString() 
+                      : 'In progress'}
+                  </p>
+                </div>
+                {selectedJob.pipeline_version && (
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Pipeline Version</p>
+                    <p className="text-sm">{selectedJob.pipeline_version}</p>
+                  </div>
+                )}
+                {selectedJob.embedding_model && (
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">Embedding Model</p>
+                    <p className="text-sm">{selectedJob.embedding_model}</p>
+                  </div>
+                )}
+              </div>
+
+              {selectedJob.error_message && (
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground mb-2">Error Message</p>
+                  <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                    <p className="text-sm text-destructive">{selectedJob.error_message}</p>
+                  </div>
+                </div>
+              )}
+
+              {selectedJob.meta && Object.keys(selectedJob.meta).length > 0 && (
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground mb-2">Metadata</p>
+                  <div className="p-3 rounded-lg bg-muted/50 border">
+                    <div className="space-y-2">
+                      {Object.entries(selectedJob.meta).map(([key, value]) => (
+                        <div key={key} className="flex gap-2">
+                          <span className="text-sm font-medium min-w-[120px]">{key}:</span>
+                          <span className="text-sm text-muted-foreground">
+                            {typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

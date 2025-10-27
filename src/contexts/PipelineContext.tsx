@@ -11,6 +11,24 @@ interface FileItem {
   storage_path: string;
 }
 
+export interface JobItem {
+  id: string;
+  workspace_id: string;
+  trigger_by: string | null;
+  started_at: string;
+  finished_at: string | null;
+  meta: any;
+  created_at: string;
+  pipeline_version: string | null;
+  embedding_model: string | null;
+  status: 'created' | 'queued' | 'validating' | 'validation_failed' | 'snapshot_created' | 
+          'delta_calculated' | 'ingesting' | 'ingestion_failed' | 'embeddings_created' | 
+          'completed' | 'failed' | 'cancelled' | null;
+  error_message: string | null;
+  total_time_taken: string | null;
+  updated_at: string | null;
+}
+
 interface PipelineContextType {
   fileIds: string[];
   triggerBy: string | null;
@@ -19,6 +37,8 @@ interface PipelineContextType {
   setTriggerBy: (userId: string) => void;
   files: FileItem[];
   fetchFiles: () => Promise<void>;
+  jobs: JobItem[];
+  fetchJobs: () => Promise<void>;
 }
 
 const PipelineContext = createContext<PipelineContextType | undefined>(undefined);
@@ -36,6 +56,7 @@ export const PipelineProvider = ({ children }: { children: ReactNode }) => {
   const [fileIds, setFileIds] = useState<string[]>([]);
   const [triggerBy, setTriggerBy] = useState<string | null>(null);
   const [files, setFiles] = useState<FileItem[]>([]);
+  const [jobs, setJobs] = useState<JobItem[]>([]);
 
   const fetchFiles = async () => {
     if (!workspaceId) return;
@@ -56,9 +77,28 @@ export const PipelineProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const fetchJobs = async () => {
+    if (!workspaceId) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('jobs')
+        .select('*')
+        .eq('workspace_id', workspaceId)
+        .order('started_at', { ascending: false });
+
+      if (error) throw error;
+      
+      setJobs(data || []);
+    } catch (error) {
+      console.error('Error fetching jobs:', error);
+    }
+  };
+
   useEffect(() => {
     if (workspaceId) {
       fetchFiles();
+      fetchJobs();
     }
   }, [workspaceId]);
 
@@ -80,6 +120,8 @@ export const PipelineProvider = ({ children }: { children: ReactNode }) => {
         setTriggerBy,
         files,
         fetchFiles,
+        jobs,
+        fetchJobs,
       }}
     >
       {children}
