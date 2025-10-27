@@ -39,6 +39,7 @@ interface PipelineContextType {
   fetchFiles: () => Promise<void>;
   jobs: JobItem[];
   fetchJobs: () => Promise<void>;
+  addOrUpdateJob: (job: JobItem) => void;
 }
 
 const PipelineContext = createContext<PipelineContextType | undefined>(undefined);
@@ -110,6 +111,21 @@ export const PipelineProvider = ({ children }: { children: ReactNode }) => {
     setFileIds([]);
   };
 
+  const addOrUpdateJob = (job: JobItem) => {
+    setJobs(prevJobs => {
+      const existingIndex = prevJobs.findIndex(j => j.id === job.id);
+      if (existingIndex >= 0) {
+        // Update existing job
+        const updated = [...prevJobs];
+        updated[existingIndex] = job;
+        return updated;
+      } else {
+        // Add new job at the beginning
+        return [job, ...prevJobs];
+      }
+    });
+  };
+
   return (
     <PipelineContext.Provider
       value={{
@@ -122,6 +138,7 @@ export const PipelineProvider = ({ children }: { children: ReactNode }) => {
         fetchFiles,
         jobs,
         fetchJobs,
+        addOrUpdateJob,
       }}
     >
       {children}

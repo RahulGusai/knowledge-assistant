@@ -69,7 +69,7 @@ const JOB_STATUS_MESSAGES: Record<string, { message: string; progress: number }>
 
 export default function Pipeline() {
   const { toast } = useToast();
-  const { files, triggerBy, jobs, fetchJobs } = usePipeline();
+  const { files, triggerBy, jobs, fetchJobs, addOrUpdateJob } = usePipeline();
   const { workspaceId } = useAppContext();
   const [isRunning, setIsRunning] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -166,8 +166,8 @@ export default function Pipeline() {
                 title: "Pipeline completed successfully",
                 description: "The pipeline ran successfully",
               });
-              // Refresh jobs from database
-              fetchJobs();
+              // Add/update job in context with the latest data
+              addOrUpdateJob(job as JobItem);
             } 
             // Terminal error states or unknown statuses - stop everything
             else if (TERMINAL_ERROR_STATUSES.includes(status) || isUnknownStatus) {
@@ -184,8 +184,8 @@ export default function Pipeline() {
                 description: statusInfo.message,
                 variant: "destructive",
               });
-              // Refresh jobs from database
-              fetchJobs();
+              // Add/update job in context with the latest data
+              addOrUpdateJob(job as JobItem);
             }
           }
         }
