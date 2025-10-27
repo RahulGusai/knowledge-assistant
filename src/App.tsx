@@ -16,7 +16,6 @@ import Assistant from "./pages/Assistant";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/ProtectedRoute";
-import WorkspaceLoader from "./components/WorkspaceLoader";
 
 const queryClient = new QueryClient();
 
@@ -36,20 +35,18 @@ const App = () => (
                   path="*"
                   element={
                     <ProtectedRoute>
-                      <WorkspaceLoader>
-                        <DashboardLayout>
-                          <Routes>
-                            <Route path="/home" element={<Dashboard />} />
-                            <Route path="/files" element={<Files />} />
-                            <Route path="/integrations" element={<Integrations />} />
-                            <Route path="/branding" element={<Branding />} />
-                            <Route path="/pipeline" element={<Pipeline />} />
-                            <Route path="/assistant" element={<Assistant />} />
-                            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                            <Route path="*" element={<NotFound />} />
-                          </Routes>
-                        </DashboardLayout>
-                      </WorkspaceLoader>
+                      <DashboardLayout>
+                        <Routes>
+                          <Route path="/home" element={<Dashboard />} />
+                          <Route path="/files" element={<Files />} />
+                          <Route path="/integrations" element={<Integrations />} />
+                          <Route path="/branding" element={<Branding />} />
+                          <Route path="/pipeline" element={<Pipeline />} />
+                          <Route path="/assistant" element={<Assistant />} />
+                          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                          <Route path="*" element={<NotFound />} />
+                        </Routes>
+                      </DashboardLayout>
                     </ProtectedRoute>
                   }
                 />

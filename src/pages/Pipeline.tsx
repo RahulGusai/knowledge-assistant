@@ -70,7 +70,7 @@ const JOB_STATUS_MESSAGES: Record<string, { message: string; progress: number }>
 export default function Pipeline() {
   const { toast } = useToast();
   const { files, jobs, fetchJobs, addOrUpdateJob } = usePipeline();
-  const { workspaceId, userId } = useAppContext();
+  const { workspaceId } = useAppContext();
   const [isRunning, setIsRunning] = useState(false);
   const [progress, setProgress] = useState(0);
   const [progressMessage, setProgressMessage] = useState("");
@@ -239,11 +239,23 @@ export default function Pipeline() {
     setRuns([newRun, ...runs]);
 
     try {
+      // Get current user from session for trigger_by
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        toast({
+          title: "Authentication error",
+          description: "Please log in again",
+          variant: "destructive",
+        });
+        setIsRunning(false);
+        return;
+      }
+
       // Prepare payload
       const payload = {
         file_ids: fileIds,
         workspace_id: workspaceId,
-        trigger_by: userId,
+        trigger_by: session.user.id,
       };
 
       setProgressMessage("Sending request to pipeline...");

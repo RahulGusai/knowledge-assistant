@@ -4,7 +4,6 @@ import { WORKSPACE_ID } from '@/constants/storage';
 
 interface AppContextType {
   workspaceId: string | null;
-  userId: string | null;
   loadingWorkspace: boolean;
   workspaceError: string | null;
   loadWorkspaceId: () => Promise<void>;
@@ -23,8 +22,7 @@ export const useAppContext = () => {
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [loadingWorkspace, setLoadingWorkspace] = useState(true);
+  const [loadingWorkspace, setLoadingWorkspace] = useState(false);
   const [workspaceError, setWorkspaceError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -60,7 +58,6 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       }
 
       console.log('Fetching workspace for user_id:', session.user.id);
-      setUserId(session.user.id);
 
       const { data, error } = await supabase
         .from('workspace_users')
@@ -97,45 +94,14 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const clearWorkspace = () => {
     setWorkspaceId(null);
-    setUserId(null);
     localStorage.removeItem(WORKSPACE_ID);
     setWorkspaceError(null);
   };
-
-  // Initialize workspace on mount and listen for auth changes
-  useEffect(() => {
-    const initWorkspace = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        await loadWorkspaceId();
-      } else {
-        setLoadingWorkspace(false);
-      }
-    };
-
-    initWorkspace();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'SIGNED_IN' && session?.user && !workspaceId) {
-        // Only load if we don't have a workspace yet
-        setTimeout(() => {
-          loadWorkspaceId();
-        }, 0);
-      } else if (event === 'SIGNED_OUT') {
-        clearWorkspace();
-        setLoadingWorkspace(false);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, [workspaceId]);
 
   return (
     <AppContext.Provider
       value={{
         workspaceId,
-        userId,
         loadingWorkspace,
         workspaceError,
         loadWorkspaceId,
