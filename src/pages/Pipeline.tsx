@@ -69,8 +69,8 @@ const JOB_STATUS_MESSAGES: Record<string, { message: string; progress: number }>
 
 export default function Pipeline() {
   const { toast } = useToast();
-  const { files, triggerBy, jobs, fetchJobs, addOrUpdateJob } = usePipeline();
-  const { workspaceId } = useAppContext();
+  const { files, jobs, fetchJobs, addOrUpdateJob } = usePipeline();
+  const { workspaceId, userId } = useAppContext();
   const [isRunning, setIsRunning] = useState(false);
   const [progress, setProgress] = useState(0);
   const [progressMessage, setProgressMessage] = useState("");
@@ -243,7 +243,7 @@ export default function Pipeline() {
       const payload = {
         file_ids: fileIds,
         workspace_id: workspaceId,
-        trigger_by: triggerBy,
+        trigger_by: userId,
       };
 
       setProgressMessage("Sending request to pipeline...");

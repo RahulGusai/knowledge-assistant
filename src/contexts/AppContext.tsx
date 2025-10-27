@@ -4,6 +4,7 @@ import { WORKSPACE_ID } from '@/constants/storage';
 
 interface AppContextType {
   workspaceId: string | null;
+  userId: string | null;
   loadingWorkspace: boolean;
   workspaceError: string | null;
   loadWorkspaceId: () => Promise<void>;
@@ -22,6 +23,7 @@ export const useAppContext = () => {
 
 export const AppProvider = ({ children }: { children: ReactNode }) => {
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const [loadingWorkspace, setLoadingWorkspace] = useState(true);
   const [workspaceError, setWorkspaceError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -58,6 +60,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       }
 
       console.log('Fetching workspace for user_id:', session.user.id);
+      setUserId(session.user.id);
 
       const { data, error } = await supabase
         .from('workspace_users')
@@ -94,6 +97,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
 
   const clearWorkspace = () => {
     setWorkspaceId(null);
+    setUserId(null);
     localStorage.removeItem(WORKSPACE_ID);
     setWorkspaceError(null);
   };
@@ -131,6 +135,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     <AppContext.Provider
       value={{
         workspaceId,
+        userId,
         loadingWorkspace,
         workspaceError,
         loadWorkspaceId,
