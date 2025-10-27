@@ -90,7 +90,7 @@ export default function Pipeline() {
     return "default";
   };
 
-  // Listen to job status updates via Supabase realtime
+  // Listen to job status updates via Supabase realtime for active pipeline runs
   useEffect(() => {
     if (!supabase || !isRunning) return;
 
@@ -399,6 +399,36 @@ export default function Pipeline() {
       setCurrentPage(1);
     }
   }, [currentPage, totalPages]);
+
+  // Persistent realtime subscription for all job updates to refresh history
+  useEffect(() => {
+    if (!supabase || !workspaceId) return;
+
+    const channel = supabase
+      .channel('job-history-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'jobs',
+          filter: `workspace_id=eq.${workspaceId}`,
+        },
+        (payload) => {
+          console.log('Job history update:', payload);
+          
+          // Refresh jobs list whenever any job is inserted or updated
+          if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
+            fetchJobs();
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [workspaceId, fetchJobs]);
 
   return (
     <div className="space-y-8">
