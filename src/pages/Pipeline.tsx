@@ -509,7 +509,7 @@ export default function Pipeline() {
               </div>
               <div className="h-2 bg-muted rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-success transition-all"
+                  className="h-full bg-gradient-to-r from-primary to-accent transition-all"
                   style={{
                     width: jobs.length > 0 
                       ? `${(jobs.filter(j => j.status === 'completed').length / jobs.length) * 100}%`
@@ -526,7 +526,9 @@ export default function Pipeline() {
 
             <div className="pt-4 space-y-2 border-t">
               <p className="text-sm text-muted-foreground">Last Run</p>
-              <p className="font-medium">{runs[0]?.startTime || "Never"}</p>
+              <p className="font-medium">
+                {jobs.length > 0 ? new Date(jobs[0].started_at).toLocaleString() : "Never"}
+              </p>
             </div>
           </CardContent>
         </Card>
