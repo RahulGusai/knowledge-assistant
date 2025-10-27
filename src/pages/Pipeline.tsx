@@ -473,15 +473,19 @@ export default function Pipeline() {
 
             <div className="grid grid-cols-3 gap-4 pt-4">
               <div className="text-center p-4 rounded-lg bg-card border">
-                <p className="text-2xl font-bold text-success">{runs.filter(r => r.status === "success").length}</p>
+                <p className="text-2xl font-bold text-success">
+                  {jobs.filter(j => j.status === 'completed').length}
+                </p>
                 <p className="text-sm text-muted-foreground">Successful</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-card border">
-                <p className="text-2xl font-bold text-destructive">{runs.filter(r => r.status === "failed").length}</p>
+                <p className="text-2xl font-bold text-destructive">
+                  {jobs.filter(j => ['failed', 'ingestion_failed', 'validation_failed'].includes(j.status || '')).length}
+                </p>
                 <p className="text-sm text-muted-foreground">Failed</p>
               </div>
               <div className="text-center p-4 rounded-lg bg-card border">
-                <p className="text-2xl font-bold">{runs.length}</p>
+                <p className="text-2xl font-bold">{jobs.length}</p>
                 <p className="text-sm text-muted-foreground">Total Runs</p>
               </div>
             </div>
@@ -498,14 +502,18 @@ export default function Pipeline() {
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Success Rate</span>
                 <span className="font-medium">
-                  {Math.round((runs.filter(r => r.status === "success").length / runs.length) * 100)}%
+                  {jobs.length > 0 
+                    ? Math.round((jobs.filter(j => j.status === 'completed').length / jobs.length) * 100)
+                    : 0}%
                 </span>
               </div>
               <div className="h-2 bg-muted rounded-full overflow-hidden">
                 <div
                   className="h-full bg-success transition-all"
                   style={{
-                    width: `${(runs.filter(r => r.status === "success").length / runs.length) * 100}%`
+                    width: jobs.length > 0 
+                      ? `${(jobs.filter(j => j.status === 'completed').length / jobs.length) * 100}%`
+                      : '0%'
                   }}
                 />
               </div>
@@ -567,9 +575,6 @@ export default function Pipeline() {
                       <span className="ml-2 capitalize">{job.status?.replace(/_/g, ' ')}</span>
                     </Badge>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">
-                        {job.pipeline_version ? `Pipeline v${job.pipeline_version}` : 'Pipeline Job'}
-                      </p>
                       <p className="text-sm text-muted-foreground">
                         {new Date(job.started_at).toLocaleString()} • 
                         {job.total_time_taken ? ` ${formatDuration(job.total_time_taken)}` : ' In progress'}
@@ -670,23 +675,53 @@ export default function Pipeline() {
                 </div>
               )}
 
-              {selectedJob.meta && Object.keys(selectedJob.meta).length > 0 && (
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground mb-2">Metadata</p>
-                  <div className="p-3 rounded-lg bg-muted/50 border">
-                    <div className="space-y-2">
-                      {Object.entries(selectedJob.meta).map(([key, value]) => (
-                        <div key={key} className="flex gap-2">
-                          <span className="text-sm font-medium min-w-[120px]">{key}:</span>
-                          <span className="text-sm text-muted-foreground">
-                            {typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}
-                          </span>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground mb-2">Metadata</p>
+                {(() => {
+                  try {
+                    if (!selectedJob.meta || typeof selectedJob.meta !== 'object') {
+                      return (
+                        <div className="p-3 rounded-lg bg-muted/50 border text-center">
+                          <p className="text-sm text-muted-foreground">No metadata found</p>
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
+                      );
+                    }
+                    
+                    const metaKeys = Object.keys(selectedJob.meta);
+                    if (metaKeys.length === 0) {
+                      return (
+                        <div className="p-3 rounded-lg bg-muted/50 border text-center">
+                          <p className="text-sm text-muted-foreground">No metadata found</p>
+                        </div>
+                      );
+                    }
+                    
+                    return (
+                      <div className="p-3 rounded-lg bg-muted/50 border">
+                        <div className="space-y-2">
+                          {metaKeys.map((key) => {
+                            const value = selectedJob.meta[key];
+                            return (
+                              <div key={key} className="flex gap-2">
+                                <span className="text-sm font-medium min-w-[120px]">{key}:</span>
+                                <span className="text-sm text-muted-foreground break-all">
+                                  {typeof value === 'object' ? JSON.stringify(value, null, 2) : String(value)}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  } catch (error) {
+                    return (
+                      <div className="p-3 rounded-lg bg-muted/50 border text-center">
+                        <p className="text-sm text-muted-foreground">No metadata found</p>
+                      </div>
+                    );
+                  }
+                })()}
+              </div>
             </div>
           )}
         </DialogContent>
