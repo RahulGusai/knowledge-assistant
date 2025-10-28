@@ -197,8 +197,10 @@ export default function Pipeline() {
       if (timeoutId) {
         clearTimeout(timeoutId);
       }
+      // Fetch jobs after subscription is cancelled to ensure we have the latest data
+      fetchJobs();
     };
-  }, [isRunning, workspaceId, toast, currentRunId, timeoutId]);
+  }, [isRunning, workspaceId, toast, currentRunId, timeoutId, fetchJobs]);
 
   const handleTrigger = async () => {
     // Check if workspace_id is loaded
