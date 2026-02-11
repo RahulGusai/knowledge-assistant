@@ -1,7 +1,7 @@
 // API Base URLs and Endpoints
 export const API_BASE_URLS = {
   PIPELINE: "https://ai-workflows-n8n.up.railway.app",
-  RAG_QUERY: "https://rag-query-180483052401.us-east1.run.app",
+  RAG_QUERY: "https://rag-querying-service-production-f5dc.up.railway.app",
 } as const;
 
 export const API_ENDPOINTS = {
