@@ -1,25 +1,13 @@
-import { useState, useRef, useEffect } from "react";
+import { useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
-import { Send, Loader2, Bot, UserCircle } from "lucide-react";
+import { Send, Loader2, UserCircle } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import brainLogo from "@/assets/brain-logo.png";
 import { cn } from "@/lib/utils";
-import { API_ENDPOINTS } from "@/constants/api";
-import { chatHistoryService } from "@/services/chatHistoryService";
-
-interface Message {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  timestamp: Date;
-  usedEmbeddings?: boolean;
-  responseTime?: number;
-}
-
-import { useAppContext } from "@/contexts/AppContext";
+import { useChatContext } from "@/contexts/ChatContext";
 
 interface ChatAssistantProps {
   brandName?: string;
@@ -38,12 +26,9 @@ export default function ChatAssistant({
   primaryFont = "Inter",
   secondaryFont = "Georgia",
 }: ChatAssistantProps) {
-  const [messages, setMessages] = useState<Message[]>(() => chatHistoryService.getMessages());
-  const [input, setInput] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
+  const { messages, isLoading, input, setInput, sendMessage } = useChatContext();
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const { workspaceId } = useAppContext();
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -51,76 +36,10 @@ export default function ChatAssistant({
     }
   }, [messages]);
 
-  useEffect(() => {
-    if (messages.length > 0) {
-      chatHistoryService.saveMessages(messages);
-    }
-  }, [messages]);
-
-  const handleSendMessage = async () => {
-    if (!input.trim() || isLoading || !workspaceId) return;
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      content: input.trim(),
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
-    setInput("");
-    setIsLoading(true);
-
-    const startTime = performance.now();
-
-    try {
-      const response = await fetch(API_ENDPOINTS.RAG_QUERY, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          workspace_id: workspaceId,
-          query: userMessage.content,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to get response from assistant");
-      }
-
-      const data = await response.json();
-      const endTime = performance.now();
-      const responseTime = ((endTime - startTime) / 1000).toFixed(2);
-
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: data.response || "I couldn't generate a response.",
-        timestamp: new Date(),
-        usedEmbeddings: data.used_embeddings || false,
-        responseTime: parseFloat(responseTime),
-      };
-      setMessages((prev) => [...prev, assistantMessage]);
-    } catch (error) {
-      console.error("Error calling RAG API:", error);
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: "Sorry, I encountered an error processing your request. Please try again.",
-        timestamp: new Date(),
-      };
-      setMessages((prev) => [...prev, errorMessage]);
-    } finally {
-      setIsLoading(false);
-      inputRef.current?.focus();
-    }
-  };
-
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      handleSendMessage();
+      sendMessage();
     }
   };
 
@@ -306,7 +225,7 @@ export default function ChatAssistant({
               />
             </div>
             <Button
-              onClick={handleSendMessage}
+              onClick={sendMessage}
               disabled={!input.trim() || isLoading}
               size="icon"
               className="h-[44px] w-[44px] flex-shrink-0"

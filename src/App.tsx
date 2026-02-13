@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { AppProvider } from "./contexts/AppContext";
 import { PipelineProvider } from "./contexts/PipelineContext";
+import { ChatProvider } from "./contexts/ChatContext";
 import DashboardLayout from "./components/DashboardLayout";
 import Dashboard from "./pages/Dashboard";
 import Files from "./pages/Files";
@@ -24,6 +25,7 @@ const App = () => (
     <ThemeProvider attribute="class" defaultTheme="light">
       <TooltipProvider>
         <AppProvider>
+          <ChatProvider>
           <PipelineProvider>
             <Toaster />
             <Sonner />
@@ -53,6 +55,7 @@ const App = () => (
               </Routes>
             </BrowserRouter>
           </PipelineProvider>
+          </ChatProvider>
         </AppProvider>
       </TooltipProvider>
     </ThemeProvider>
