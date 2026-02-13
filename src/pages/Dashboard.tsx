@@ -7,6 +7,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/lib/supabase";
 import { toast } from "@/hooks/use-toast";
 import ChatAssistant from "@/components/ChatAssistant";
+import { chatHistoryService } from "@/services/chatHistoryService";
 import { cn } from "@/lib/utils";
 
 const quickLinks = [
@@ -45,6 +46,7 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState("overview");
 
   const handleLogout = async () => {
+    chatHistoryService.clearHistory();
     const { error } = await supabase.auth.signOut();
     if (error) {
       toast({

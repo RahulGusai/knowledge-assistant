@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
 import { WORKSPACE_ID } from '@/constants/storage';
+import { chatHistoryService } from '@/services/chatHistoryService';
 
 interface AppContextType {
   workspaceId: string | null;
@@ -96,6 +97,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
     setWorkspaceId(null);
     localStorage.removeItem(WORKSPACE_ID);
     setWorkspaceError(null);
+    chatHistoryService.clearHistory();
   };
 
   return (
