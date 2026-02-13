@@ -1,33 +1,45 @@
 
 
-## Client-Side Chat History Service
+## Fix: Persist Chat Query Across Navigation
 
-### Overview
-Create a chat history service using `sessionStorage` to persist chat messages across page navigations within the same browser session. The history will be cleared when the user logs out.
+### Problem
+When you send a message to the assistant and navigate away before the response arrives, the `ChatAssistant` component unmounts. This kills the in-flight API request and resets the loading state, so when you return, the "Thinking..." animation is gone and no response ever appears.
 
-### Implementation Steps
+### Solution
+Move all chat state and logic (messages, loading state, send function) out of the `ChatAssistant` component and into a **ChatContext** that lives at the app level. Since the context stays mounted regardless of which page you're on, the API call continues in the background and the response is captured even if you navigate away.
 
-1. **Create `src/services/chatHistoryService.ts`** - A simple service that reads/writes chat messages to `sessionStorage` using a consistent key. It will handle serialization/deserialization (including `Date` objects for timestamps) and provide `getMessages()`, `saveMessages()`, and `clearHistory()` methods.
+### What Changes
 
-2. **Update `src/components/ChatAssistant.tsx`** - Initialize the `messages` state from `chatHistoryService.getMessages()` instead of an empty array. Add an `useEffect` that persists messages to `sessionStorage` whenever they change.
+1. **Create `src/contexts/ChatContext.tsx`**
+   - Holds `messages`, `isLoading`, `input`, and `sendMessage` logic
+   - Initializes messages from `chatHistoryService`
+   - Persists messages to `sessionStorage` on change
+   - The fetch call lives here, so it survives component unmounts
+   - Exposes a `clearHistory()` method for logout
 
-3. **Update `src/contexts/AppContext.tsx`** - Import and call `chatHistoryService.clearHistory()` inside the `clearWorkspace()` method, which is already called on logout.
+2. **Update `src/App.tsx`**
+   - Wrap the app with `<ChatProvider>` (inside `AppProvider` so it has access to `workspaceId`)
 
-4. **Update `src/pages/Dashboard.tsx`** - Import and call `chatHistoryService.clearHistory()` in the `handleLogout` function alongside the existing sign-out logic.
+3. **Simplify `src/components/ChatAssistant.tsx`**
+   - Remove all state management and API logic
+   - Consume `messages`, `isLoading`, `input`, `setInput`, `sendMessage` from `ChatContext`
+   - Becomes a pure presentation component
 
-### Technical Details
-
-- **Storage**: `sessionStorage` (survives page refreshes and navigation, but clears when the browser tab is closed)
-- **Key**: `CHAT_HISTORY` constant in `src/constants/storage.ts`
-- **Serialization**: JSON with Date reconstruction on deserialization
-- **Clear triggers**: Both logout paths (`ProtectedRoute.handleLogout` and `Dashboard.handleLogout`) flow through `clearWorkspace()` in `AppContext`, so adding the clear call there covers both cases. The Dashboard logout will also get a direct clear call for safety.
+4. **Update `src/contexts/AppContext.tsx`** and **`src/pages/Dashboard.tsx`**
+   - Replace direct `chatHistoryService.clearHistory()` calls with the context's clear method (or keep both for safety)
 
 ### Files to Create
-- `src/services/chatHistoryService.ts`
+- `src/contexts/ChatContext.tsx`
 
 ### Files to Modify
-- `src/constants/storage.ts` (add `CHAT_HISTORY` key)
-- `src/components/ChatAssistant.tsx` (load and persist messages)
-- `src/contexts/AppContext.tsx` (clear history on workspace clear)
-- `src/pages/Dashboard.tsx` (clear history on logout)
+- `src/App.tsx` (add ChatProvider)
+- `src/components/ChatAssistant.tsx` (consume context instead of managing state)
+- `src/contexts/AppContext.tsx` (minor adjustment for clearing)
+- `src/pages/Dashboard.tsx` (minor adjustment for clearing)
+
+### Technical Details
+- The context pattern ensures the `fetch()` Promise continues resolving even when `ChatAssistant` is not rendered
+- `useRef` will be used for `startTime` tracking so it persists across re-renders
+- The `sessionStorage` persistence layer remains unchanged
+- No new dependencies required
 
