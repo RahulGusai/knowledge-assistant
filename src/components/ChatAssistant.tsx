@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import brainLogo from "@/assets/brain-logo.png";
 import { cn } from "@/lib/utils";
 import { API_ENDPOINTS } from "@/constants/api";
+import { chatHistoryService } from "@/services/chatHistoryService";
 
 interface Message {
   id: string;
@@ -37,7 +38,7 @@ export default function ChatAssistant({
   primaryFont = "Inter",
   secondaryFont = "Georgia",
 }: ChatAssistantProps) {
-  const [messages, setMessages] = useState<Message[]>([]);
+  const [messages, setMessages] = useState<Message[]>(() => chatHistoryService.getMessages());
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -47,6 +48,12 @@ export default function ChatAssistant({
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  useEffect(() => {
+    if (messages.length > 0) {
+      chatHistoryService.saveMessages(messages);
     }
   }, [messages]);
 
