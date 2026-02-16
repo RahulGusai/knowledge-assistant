@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
@@ -8,9 +8,12 @@ import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Turnstile, type TurnstileInstance } from "@marsidev/react-turnstile";
 
 export default function Auth() {
   const [loading, setLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const turnstileRef = useRef<TurnstileInstance>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -60,6 +63,8 @@ export default function Auth() {
         description: error.message || "An error occurred during GitHub authentication.",
         variant: "destructive",
       });
+      setCaptchaToken(null);
+      turnstileRef.current?.reset();
       setLoading(false);
     }
   };
@@ -76,7 +81,9 @@ export default function Auth() {
 
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInAnonymously();
+      const { error } = await supabase.auth.signInAnonymously({
+        options: { captchaToken: captchaToken! },
+      });
 
       if (error) throw error;
 
@@ -90,6 +97,8 @@ export default function Auth() {
         description: error.message || "An error occurred during guest sign-in.",
         variant: "destructive",
       });
+      setCaptchaToken(null);
+      turnstileRef.current?.reset();
     } finally {
       setLoading(false);
     }
@@ -128,11 +137,19 @@ export default function Auth() {
             </Alert>
           )}
 
+          <Turnstile
+            ref={turnstileRef}
+            siteKey="0x4AAAAAACd8U7GjZowz43NG"
+            onSuccess={(token) => setCaptchaToken(token)}
+            onExpire={() => setCaptchaToken(null)}
+            className="mx-auto"
+          />
+
           <Button
             onClick={handleGithubAuth}
             className="w-full shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all"
             size="lg"
-            disabled={loading}
+            disabled={loading || !captchaToken}
           >
             <Github className="mr-2 h-5 w-5" />
             Sign in with GitHub
@@ -152,7 +169,7 @@ export default function Auth() {
             onClick={handleGuestAuth}
             className="w-full border-primary/20 hover:border-primary/40 transition-all"
             size="lg"
-            disabled={loading}
+            disabled={loading || !captchaToken}
           >
             <UserRound className="mr-2 h-5 w-5" />
             Continue as Guest
