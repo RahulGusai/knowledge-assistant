@@ -255,7 +255,7 @@ export default function ChatAssistant({
           <div className="flex justify-center -mt-12 relative z-10">
             <button
               onClick={scrollToBottom}
-              className="rounded-full p-2 border bg-background shadow-md hover:bg-accent transition-colors"
+              className="rounded-full p-2 border bg-background shadow-md hover:bg-accent transition-colors animate-bounce"
               title="Scroll to bottom"
             >
               <ArrowDown className="h-4 w-4 text-muted-foreground" />
