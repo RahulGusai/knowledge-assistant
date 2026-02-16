@@ -1,10 +1,8 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Github, Mail } from "lucide-react";
+import { Github, LogIn, UserRound } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase, isSupabaseConfigured } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
@@ -12,9 +10,6 @@ import { useEffect } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function Auth() {
-  const [isSignUp, setIsSignUp] = useState(false);
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -22,14 +17,12 @@ export default function Auth() {
   useEffect(() => {
     if (!isSupabaseConfigured || !supabase) return;
 
-    // Check if user is already logged in
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
         navigate("/home");
       }
     });
 
-    // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
@@ -40,60 +33,6 @@ export default function Auth() {
 
     return () => subscription.unsubscribe();
   }, [navigate]);
-
-  const handleEmailAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!isSupabaseConfigured || !supabase) {
-      toast({
-        title: "Configuration Required",
-        description: "Please configure your Supabase credentials in src/lib/supabase.ts",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            emailRedirectTo: `${window.location.origin}/home`,
-          },
-        });
-
-        if (error) throw error;
-
-        toast({
-          title: "Success!",
-          description: "Check your email to confirm your account.",
-        });
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
-        if (error) throw error;
-
-        toast({
-          title: "Welcome back!",
-          description: "You've successfully signed in.",
-        });
-      }
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "An error occurred during authentication.",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleGithubAuth = async () => {
     if (!isSupabaseConfigured || !supabase) {
@@ -125,6 +64,37 @@ export default function Auth() {
     }
   };
 
+  const handleGuestAuth = async () => {
+    if (!isSupabaseConfigured || !supabase) {
+      toast({
+        title: "Configuration Required",
+        description: "Please configure your Supabase credentials in src/lib/supabase.ts",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.signInAnonymously();
+
+      if (error) throw error;
+
+      toast({
+        title: "Welcome!",
+        description: "You're signed in as a guest.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "An error occurred during guest sign-in.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden p-4">
       {/* Animated Background */}
@@ -139,15 +109,13 @@ export default function Auth() {
       <Card className="w-full max-w-md shadow-2xl border-primary/10 backdrop-blur-sm bg-background/95 animate-scale-in relative z-10">
         <CardHeader className="space-y-3 text-center pb-6">
           <div className="mx-auto w-16 h-16 bg-gradient-to-br from-primary to-primary/50 rounded-2xl flex items-center justify-center mb-2 shadow-lg animate-fade-in">
-            <Mail className="h-8 w-8 text-primary-foreground" />
+            <LogIn className="h-8 w-8 text-primary-foreground" />
           </div>
           <CardTitle className="text-3xl font-bold tracking-tight bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text">
-            {isSignUp ? "Create an account" : "Welcome back"}
+            Welcome
           </CardTitle>
           <CardDescription className="text-base">
-            {isSignUp
-              ? "Enter your information to create your account"
-              : "Sign in to access your RAG chatbot dashboard"}
+            Sign in to access your knowledge assistant
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -160,73 +128,35 @@ export default function Auth() {
             </Alert>
           )}
 
-          <form onSubmit={handleEmailAuth} className="space-y-5">
-            <div className="space-y-2 animate-fade-in">
-              <Label htmlFor="email" className="text-sm font-medium">
-                Email
-              </Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="name@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="h-11 transition-all focus:ring-primary/20"
-                required
-              />
-            </div>
-            <div className="space-y-2 animate-fade-in delay-75">
-              <Label htmlFor="password" className="text-sm font-medium">
-                Password
-              </Label>
-              <Input
-                id="password"
-                type="password"
-                placeholder="••••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="h-11 transition-all focus:ring-primary/20"
-                required
-              />
-            </div>
-            <Button
-              type="submit"
-              className="w-full shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all"
-              size="lg"
-              disabled={loading}
-            >
-              {loading ? "Loading..." : isSignUp ? "Sign up with Email" : "Sign in with Email"}
-            </Button>
-          </form>
+          <Button
+            onClick={handleGithubAuth}
+            className="w-full shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all"
+            size="lg"
+            disabled={loading}
+          >
+            <Github className="mr-2 h-5 w-5" />
+            Sign in with GitHub
+          </Button>
 
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
               <Separator />
             </div>
             <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
+              <span className="bg-background px-2 text-muted-foreground">Or</span>
             </div>
           </div>
 
           <Button
             variant="outline"
-            onClick={handleGithubAuth}
-            className="w-full hover-scale border-primary/20 hover:border-primary/40 transition-all"
+            onClick={handleGuestAuth}
+            className="w-full border-primary/20 hover:border-primary/40 transition-all"
+            size="lg"
             disabled={loading}
           >
-            <Github className="mr-2 h-4 w-4" />
-            Sign in with GitHub
+            <UserRound className="mr-2 h-5 w-5" />
+            Continue as Guest
           </Button>
-
-          <div className="text-center text-sm pt-2">
-            <button
-              type="button"
-              onClick={() => setIsSignUp(!isSignUp)}
-              className="text-primary hover:text-primary/80 font-medium transition-colors story-link"
-            >
-              {isSignUp ? "Already have an account? Sign in" : "Don't have an account? Sign up"}
-            </button>
-          </div>
         </CardContent>
       </Card>
     </div>
