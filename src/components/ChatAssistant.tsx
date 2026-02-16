@@ -1,4 +1,5 @@
 import { useRef, useEffect } from "react";
+import { ArrowDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -48,11 +49,30 @@ export default function ChatAssistant({
   const { messages, isLoading, input, setInput, sendMessage } = useChatContext();
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [showScrollBtn, setShowScrollBtn] = useLocalState(false);
+
+  const scrollToBottom = () => {
+    if (scrollRef.current) {
+      const viewport = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
+      if (viewport) {
+        viewport.scrollTop = viewport.scrollHeight;
+      }
+    }
+  };
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    const viewport = scrollRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+    if (!viewport) return;
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = viewport;
+      setShowScrollBtn(scrollHeight - scrollTop - clientHeight > 100);
+    };
+    viewport.addEventListener('scroll', handleScroll);
+    return () => viewport.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  useEffect(() => {
+    scrollToBottom();
   }, [messages]);
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -229,6 +249,19 @@ export default function ChatAssistant({
             </div>
           )}
         </ScrollArea>
+
+        {/* Scroll to bottom button */}
+        {showScrollBtn && (
+          <div className="flex justify-center -mt-12 relative z-10">
+            <button
+              onClick={scrollToBottom}
+              className="rounded-full p-2 border bg-background shadow-md hover:bg-accent transition-colors"
+              title="Scroll to bottom"
+            >
+              <ArrowDown className="h-4 w-4 text-muted-foreground" />
+            </button>
+          </div>
+        )}
 
         {/* Chat Input */}
         <div className="border-t p-4 bg-background">
