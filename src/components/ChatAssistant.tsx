@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card } from "@/components/ui/card";
-import { Send, Loader2, UserCircle } from "lucide-react";
+import { Send, Loader2, UserCircle, Copy, Check } from "lucide-react";
+import { useState as useLocalState } from "react";
 import { Badge } from "@/components/ui/badge";
 import brainLogo from "@/assets/brain-logo.png";
 import { cn } from "@/lib/utils";
@@ -16,6 +17,24 @@ interface ChatAssistantProps {
   logo?: string | null;
   primaryFont?: string;
   secondaryFont?: string;
+}
+
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useLocalState(false);
+  const handleCopy = () => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <button
+      onClick={handleCopy}
+      className="ml-auto p-1 rounded hover:bg-muted-foreground/10 transition-colors text-muted-foreground hover:text-foreground"
+      title="Copy to clipboard"
+    >
+      {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+    </button>
+  );
 }
 
 export default function ChatAssistant({
@@ -158,6 +177,7 @@ export default function ChatAssistant({
                           {message.responseTime}s
                         </Badge>
                       )}
+                      {message.role === "assistant" && <CopyButton text={message.content} />}
                     </div>
                   </div>
                   {message.role === "user" && (
