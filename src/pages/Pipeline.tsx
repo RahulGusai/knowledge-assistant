@@ -4,11 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Play, StopCircle, Clock, CheckCircle2, XCircle, RefreshCw, AlertCircle, Eye } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
 import { usePipeline, JobItem } from "@/contexts/PipelineContext";
-import { useAppContext } from "@/contexts/AppContext";
-import { API_ENDPOINTS } from "@/constants/api";
-import { supabase } from "@/lib/supabase";
 import {
   Dialog,
   DialogContent,
@@ -24,60 +20,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-interface PipelineRun {
-  id: string;
-  status: "running" | "success" | "failed" | "pending";
-  startTime: string;
-  duration?: string;
-  trigger: string;
-}
-
-// Progress mapping for pipeline statuses
-const PROGRESS_MAP: Record<string, number> = {
-  created: 0,
-  queued: 5,
-  validating: 10,
-  validation_failed: 0,
-  snapshot_created: 25,
-  delta_calculated: 40,
-  ingesting: 60,
-  ingestion_failed: 0,
-  embeddings_created: 95,
-  completed: 100,
-  failed: 0,
-  cancelled: 0,
-};
-
-const TERMINAL_ERROR_STATUSES = ['validation_failed', 'ingestion_failed', 'failed', 'cancelled'];
-const KNOWN_HAPPY_STATUSES = ['created', 'queued', 'validating', 'snapshot_created', 'delta_calculated', 'ingesting', 'embeddings_created', 'completed'];
-
-// Job status to friendly message mapping
-const JOB_STATUS_MESSAGES: Record<string, { message: string; progress: number }> = {
-  created: { message: "Pipeline job created and initializing...", progress: PROGRESS_MAP.created },
-  queued: { message: "Pipeline is queued and waiting to start...", progress: PROGRESS_MAP.queued },
-  validating: { message: "Validating files and prerequisites...", progress: PROGRESS_MAP.validating },
-  validation_failed: { message: "Validation failed - please check your files", progress: 0 },
-  snapshot_created: { message: "Just took a snapshot of the job to save us future troubles", progress: PROGRESS_MAP.snapshot_created },
-  delta_calculated: { message: "Hang on tight... job delta created successfully!", progress: PROGRESS_MAP.delta_calculated },
-  ingesting: { message: "Ingesting and processing your documents...", progress: PROGRESS_MAP.ingesting },
-  ingestion_failed: { message: "Failed to ingest documents - please try again", progress: 0 },
-  embeddings_created: { message: "Generated AI embeddings for semantic search", progress: PROGRESS_MAP.embeddings_created },
-  completed: { message: "Pipeline completed successfully! ✨", progress: PROGRESS_MAP.completed },
-  failed: { message: "Pipeline encountered an error", progress: 0 },
-  cancelled: { message: "Pipeline was cancelled", progress: 0 },
-};
-
 export default function Pipeline() {
-  const { toast } = useToast();
-  const { files, jobs, fetchJobs, addOrUpdateJob } = usePipeline();
-  const { workspaceId } = useAppContext();
-  const [isRunning, setIsRunning] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [progressMessage, setProgressMessage] = useState("");
-  const [runs, setRuns] = useState<PipelineRun[]>([]);
-  const [currentRunId, setCurrentRunId] = useState<string | null>(null);
-  const [currentStatus, setCurrentStatus] = useState<string>("");
-  const [timeoutId, setTimeoutId] = useState<NodeJS.Timeout | null>(null);
+  const {
+    files, jobs, isRunning, progress, progressMessage, triggerPipeline,
+  } = usePipeline();
+
   const [selectedJob, setSelectedJob] = useState<JobItem | null>(null);
   const [itemsPerPage, setItemsPerPage] = useState(5);
   const [currentPage, setCurrentPage] = useState(1);
@@ -90,295 +37,6 @@ export default function Pipeline() {
     return "default";
   };
 
-  // Listen to job status updates via Supabase realtime for active pipeline runs
-  useEffect(() => {
-    if (!supabase || !isRunning) return;
-
-    // Clear any existing timeout when we start listening
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-      setTimeoutId(null);
-    }
-
-    const channel = supabase
-      .channel('job-updates')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'jobs',
-          filter: `workspace_id=eq.${workspaceId}`,
-        },
-        (payload) => {
-          console.log('Job update received:', payload);
-          
-          // Only process INSERT and UPDATE events
-          if (payload.eventType !== 'INSERT' && payload.eventType !== 'UPDATE') {
-            return;
-          }
-
-          const job = payload.new as any;
-          
-          // Only process if it matches our workspace_id
-          if (job.workspace_id === workspaceId) {
-            // Clear timeout since we received an update
-            if (timeoutId) {
-              clearTimeout(timeoutId);
-              setTimeoutId(null);
-            }
-
-            const status = job.status as string;
-            
-            // Treat unknown statuses as failures if they're not in the known happy path
-            const isUnknownStatus = !KNOWN_HAPPY_STATUSES.includes(status) && !TERMINAL_ERROR_STATUSES.includes(status);
-            const statusInfo = JOB_STATUS_MESSAGES[status] || { message: "Unknown error occurred", progress: 0 };
-            
-            setCurrentStatus(status);
-            setProgressMessage(statusInfo.message);
-            
-            // Handle ingesting phase with animated progress (60-90%)
-            if (status === 'ingesting') {
-              // Start at 60% and animate to 90%
-              let currentProgress = 60;
-              const interval = setInterval(() => {
-                currentProgress += 2;
-                if (currentProgress <= 90) {
-                  setProgress(currentProgress);
-                } else {
-                  clearInterval(interval);
-                }
-              }, 300);
-              return () => clearInterval(interval);
-            } else {
-              setProgress(statusInfo.progress);
-            }
-
-            // Terminal success state
-            if (status === 'completed') {
-              setIsRunning(false);
-              setRuns(prevRuns => prevRuns.map(run => 
-                run.id === currentRunId 
-                  ? { ...run, status: "success" as const, duration: "Completed" }
-                  : run
-              ));
-              toast({
-                title: "Pipeline completed successfully",
-                description: "The pipeline ran successfully",
-              });
-              // Add/update job in context with the latest data
-              addOrUpdateJob(job as JobItem);
-            } 
-            // Terminal error states or unknown statuses - stop everything
-            else if (TERMINAL_ERROR_STATUSES.includes(status) || isUnknownStatus) {
-              setIsRunning(false);
-              setProgress(0);
-              setProgressMessage("");
-              setRuns(prevRuns => prevRuns.map(run => 
-                run.id === currentRunId 
-                  ? { ...run, status: "failed" as const, duration: "Failed" }
-                  : run
-              ));
-              toast({
-                title: status === 'cancelled' ? "Pipeline cancelled" : "Pipeline failed",
-                description: statusInfo.message,
-                variant: "destructive",
-              });
-              // Add/update job in context with the latest data
-              addOrUpdateJob(job as JobItem);
-            }
-          }
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-      if (timeoutId) {
-        clearTimeout(timeoutId);
-      }
-      // Fetch jobs after subscription is cancelled to ensure we have the latest data
-      fetchJobs();
-    };
-  }, [isRunning, workspaceId, toast, currentRunId, timeoutId, fetchJobs]);
-
-  const handleTrigger = async () => {
-    // Check if workspace_id is loaded
-    if (!workspaceId) {
-      toast({
-        title: "Workspace not loaded",
-        description: "Please wait for workspace to be loaded",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Check if files are available
-    if (files.length === 0) {
-      toast({
-        title: "Cannot run pipeline",
-        description: "Please upload files before triggering the pipeline",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Extract file IDs from files
-    const fileIds = files.map(file => file.id);
-
-    setIsRunning(true);
-    setProgress(0);
-    setProgressMessage("Initializing pipeline...");
-    
-    const newRun: PipelineRun = {
-      id: Date.now().toString(),
-      status: "running",
-      startTime: new Date().toLocaleString(),
-      trigger: "Manual"
-    };
-
-    setCurrentRunId(newRun.id);
-    setRuns([newRun, ...runs]);
-
-    try {
-      // Get current user from session for trigger_by
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.user) {
-        toast({
-          title: "Authentication error",
-          description: "Please log in again",
-          variant: "destructive",
-        });
-        setIsRunning(false);
-        return;
-      }
-
-      // Prepare payload
-      const payload = {
-        file_ids: fileIds,
-        workspace_id: workspaceId,
-        trigger_by: session.user.id,
-      };
-
-      setProgressMessage("Sending request to pipeline...");
-      setProgress(5);
-
-      // Trigger pipeline and handle response
-      const response = await fetch(API_ENDPOINTS.PIPELINE_TRIGGER, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok) {
-        throw new Error(`API returned ${response.status}: ${response.statusText}`);
-      }
-
-      // Check if response is JSON
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        throw new Error("Pipeline API returned invalid response format");
-      }
-
-      let result;
-      try {
-        result = await response.json();
-      } catch {
-        throw new Error("Pipeline API returned invalid JSON response");
-      }
-      
-      // Check if success field is false
-      if (result.success === false) {
-        throw new Error(result.error || result.message || "Pipeline API returned failure status");
-      }
-
-      // Check if API returned success=true, mark as immediate success
-      if (result.success === true) {
-        setIsRunning(false);
-        setProgress(100);
-        setProgressMessage("Pipeline completed successfully! ✨");
-        setRuns(prevRuns => prevRuns.map(run => 
-          run.id === newRun.id 
-            ? { ...run, status: "success" as const, duration: "Completed" }
-            : run
-        ));
-        toast({
-          title: "Pipeline completed successfully",
-          description: "The pipeline ran successfully",
-        });
-        return;
-      }
-
-      // Check if API returned without starting a job
-      if (!result || result.error) {
-        throw new Error(result?.error || "Pipeline API returned without starting job");
-      }
-
-      // Set a timeout to detect if job never starts or stalls (5 minutes)
-      const timeout = setTimeout(() => {
-        setIsRunning(false);
-        setProgress(0);
-        setProgressMessage("");
-        setRuns(prevRuns => prevRuns.map(run => 
-          run.id === newRun.id 
-            ? { ...run, status: "failed" as const, duration: "Failed" }
-            : run
-        ));
-        toast({
-          title: "Pipeline timeout",
-          description: "No status update received within 5 minutes. Pipeline failed.",
-          variant: "destructive",
-        });
-      }, 300000); // 5 minutes timeout
-
-      setTimeoutId(timeout);
-
-      // Start listening for updates
-      setProgressMessage("Waiting for pipeline updates...");
-      setProgress(10);
-    } catch (error) {
-      setIsRunning(false);
-      setRuns(prevRuns => prevRuns.map(run => 
-        run.id === newRun.id 
-          ? { ...run, status: "failed" as const, duration: "Failed" }
-          : run
-      ));
-      toast({
-        title: "Pipeline failed",
-        description: error instanceof Error ? error.message : "An unexpected error occurred",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const getStatusIcon = (status: PipelineRun["status"]) => {
-    switch (status) {
-      case "running":
-        return <RefreshCw className="h-4 w-4 animate-spin" />;
-      case "success":
-        return <CheckCircle2 className="h-4 w-4" />;
-      case "failed":
-        return <XCircle className="h-4 w-4" />;
-      case "pending":
-        return <Clock className="h-4 w-4" />;
-    }
-  };
-
-  const getStatusColor = (status: PipelineRun["status"]) => {
-    switch (status) {
-      case "running":
-        return "bg-primary text-primary-foreground";
-      case "success":
-        return "bg-gradient-to-r from-success to-success/80 text-success-foreground shadow-lg";
-      case "failed":
-        return "bg-destructive text-destructive-foreground";
-      case "pending":
-        return "bg-muted text-muted-foreground";
-    }
-  };
-
   const getJobStatusBadgeColor = (status: JobItem['status']) => {
     if (status === 'completed') return "bg-gradient-to-r from-success to-success/80 text-success-foreground shadow-lg";
     if (status === 'failed' || status === 'ingestion_failed' || status === 'validation_failed') return "bg-destructive text-destructive-foreground";
@@ -388,14 +46,11 @@ export default function Pipeline() {
 
   const formatDuration = (duration: string | null) => {
     if (!duration) return "N/A";
-    
     const match = duration.match(/(\d+):(\d+):(\d+)/);
     if (!match) return duration;
-    
     const hours = parseInt(match[1]);
     const minutes = parseInt(match[2]);
     const seconds = parseInt(match[3]);
-    
     if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
     if (minutes > 0) return `${minutes}m ${seconds}s`;
     return `${seconds}s`;
@@ -408,7 +63,6 @@ export default function Pipeline() {
   const paginatedJobs = jobs.slice(startIndex, endIndex);
 
   useEffect(() => {
-    // Reset to page 1 if current page exceeds total pages
     if (currentPage > totalPages && totalPages > 0) {
       setCurrentPage(1);
     }
@@ -477,7 +131,7 @@ export default function Pipeline() {
                       {files.length} file(s) ready to process
                     </p>
                   </div>
-                  <Button onClick={handleTrigger} size="lg">
+                  <Button onClick={triggerPipeline} size="lg">
                     <Play className="h-4 w-4 mr-2" />
                     Trigger Pipeline
                   </Button>
