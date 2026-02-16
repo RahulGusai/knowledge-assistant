@@ -1,45 +1,45 @@
 
 
-## Fix: Persist Chat Query Across Navigation
+## Fix: Persist Pipeline Running State Across Navigation + 15-Minute Hard Timeout
 
 ### Problem
-When you send a message to the assistant and navigate away before the response arrives, the `ChatAssistant` component unmounts. This kills the in-flight API request and resets the loading state, so when you return, the "Thinking..." animation is gone and no response ever appears.
+1. Pipeline running state (`isRunning`, `progress`, realtime subscription) lives inside the `Pipeline` page component. When the user navigates away, the component unmounts, killing the realtime subscription and resetting all state.
+2. There is currently a 5-minute "inactivity" timeout, but no hard ceiling. A stalled job could appear stuck indefinitely.
 
 ### Solution
-Move all chat state and logic (messages, loading state, send function) out of the `ChatAssistant` component and into a **ChatContext** that lives at the app level. Since the context stays mounted regardless of which page you're on, the API call continues in the background and the response is captured even if you navigate away.
+
+Apply the same pattern used for ChatContext: lift the pipeline execution state (running flag, progress, realtime subscription, timeout) into `PipelineContext`, which stays mounted at the app level.
 
 ### What Changes
 
-1. **Create `src/contexts/ChatContext.tsx`**
-   - Holds `messages`, `isLoading`, `input`, and `sendMessage` logic
-   - Initializes messages from `chatHistoryService`
-   - Persists messages to `sessionStorage` on change
-   - The fetch call lives here, so it survives component unmounts
-   - Exposes a `clearHistory()` method for logout
+1. **Add constant to `src/constants/pipeline.ts`** (new file)
+   - `PIPELINE_HARD_TIMEOUT_MS = 15 * 60 * 1000` (15 minutes)
+   - Terminal status arrays (`TERMINAL_ERROR_STATUSES`, `KNOWN_HAPPY_STATUSES`)
+   - Progress map and status messages (move from Pipeline.tsx)
 
-2. **Update `src/App.tsx`**
-   - Wrap the app with `<ChatProvider>` (inside `AppProvider` so it has access to `workspaceId`)
+2. **Update `src/contexts/PipelineContext.tsx`**
+   - Add new state: `isRunning`, `progress`, `progressMessage`, `currentStatus`, `currentRunId`
+   - Move the Supabase realtime subscription (`useEffect` with channel) here
+   - Move the `handleTrigger` function here (rename to `triggerPipeline`)
+   - Implement the 15-minute hard timeout: starts when trigger fires, cancels the job if no terminal status is reached within the window
+   - Expose `isRunning`, `progress`, `progressMessage`, `currentStatus`, `triggerPipeline` via context
 
-3. **Simplify `src/components/ChatAssistant.tsx`**
-   - Remove all state management and API logic
-   - Consume `messages`, `isLoading`, `input`, `setInput`, `sendMessage` from `ChatContext`
+3. **Simplify `src/pages/Pipeline.tsx`**
+   - Remove all local state for `isRunning`, `progress`, `progressMessage`, `currentStatus`, `currentRunId`, `timeoutId`
+   - Remove the realtime subscription `useEffect`
+   - Remove `handleTrigger` logic
+   - Consume everything from `usePipeline()` context
    - Becomes a pure presentation component
 
-4. **Update `src/contexts/AppContext.tsx`** and **`src/pages/Dashboard.tsx`**
-   - Replace direct `chatHistoryService.clearHistory()` calls with the context's clear method (or keep both for safety)
-
 ### Files to Create
-- `src/contexts/ChatContext.tsx`
+- `src/constants/pipeline.ts`
 
 ### Files to Modify
-- `src/App.tsx` (add ChatProvider)
-- `src/components/ChatAssistant.tsx` (consume context instead of managing state)
-- `src/contexts/AppContext.tsx` (minor adjustment for clearing)
-- `src/pages/Dashboard.tsx` (minor adjustment for clearing)
+- `src/contexts/PipelineContext.tsx` (add running state, realtime sub, trigger logic, 15-min timeout)
+- `src/pages/Pipeline.tsx` (simplify to presentation only)
 
 ### Technical Details
-- The context pattern ensures the `fetch()` Promise continues resolving even when `ChatAssistant` is not rendered
-- `useRef` will be used for `startTime` tracking so it persists across re-renders
-- The `sessionStorage` persistence layer remains unchanged
-- No new dependencies required
-
+- The realtime Supabase channel will be managed inside `PipelineContext`, so it stays alive regardless of which page the user is viewing
+- The 15-minute hard timeout starts at trigger time; if no terminal status (`completed`, `validation_failed`, `ingestion_failed`, `failed`, `cancelled`) is reached, the context sets `isRunning = false`, marks status as `cancelled`, and shows an error toast
+- The existing 5-minute inactivity timeout (no status updates received) will be replaced by the single 15-minute hard timeout for simplicity
+- A placeholder comment will be left for the future API call to mark the job as cancelled server-side
