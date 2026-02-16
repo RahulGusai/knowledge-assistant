@@ -218,7 +218,7 @@ export default function ChatAssistant({
                 ref={inputRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                onKeyPress={handleKeyPress}
+                onKeyDown={handleKeyPress}
                 placeholder="Type your message..."
                 disabled={isLoading}
                 className="resize-none min-h-[44px] pr-4"
