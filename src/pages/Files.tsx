@@ -22,7 +22,6 @@ const ALLOWED_FILE_TYPES = {
   pdf: "application/pdf",
   docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
   txt: "text/plain",
-  csv: "text/csv",
 };
 
 const getFileExtension = (fileName: string): string => {
@@ -343,7 +342,7 @@ export default function Files() {
               <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
               <p className="text-lg font-medium mb-2">Drop files here</p>
               <p className="text-sm text-muted-foreground mb-4">or click the button below to browse</p>
-              <p className="text-xs text-muted-foreground mb-4">Supported formats: PDF, DOCX, TXT, CSV</p>
+              <p className="text-xs text-muted-foreground mb-4">Supported formats: PDF, DOCX, TXT</p>
               <label htmlFor="file-upload">
                 <Button type="button" onClick={() => document.getElementById("file-upload")?.click()}>
                   Select Files
@@ -352,7 +351,7 @@ export default function Files() {
                   id="file-upload"
                   type="file"
                   multiple
-                  accept=".pdf,.docx,.txt,.csv"
+                  accept=".pdf,.docx,.txt"
                   className="hidden"
                   onChange={handleFileInput}
                 />
