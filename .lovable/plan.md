@@ -1,45 +1,30 @@
 
-# Minimalistic Auth Page Update
 
-## Changes Overview
+# Add Cloudflare Turnstile CAPTCHA to Auth Page
 
-We will simplify the auth page to have two clear options: GitHub sign-in (primary) and Guest access (secondary), removing all email/password UI.
+## Overview
+Integrate Cloudflare Turnstile CAPTCHA protection on the auth page using `@marsidev/react-turnstile`. The CAPTCHA widget will appear before the sign-in buttons, and the captcha token will be passed to Supabase auth calls.
 
-## What Will Change
+## Changes
 
-### 1. Update subtitle text
-- Change "Sign in to access your RAG chatbot dashboard" to "Sign in to access your knowledge assistant"
-- Remove the sign-up variant text since there's no email form
+### 1. Install dependency
+- Install `@marsidev/react-turnstile` package
 
-### 2. Remove email/password form
-- Remove the email and password input fields, labels, and submit button
-- Remove the `isSignUp`, `email`, `password` state variables
-- Remove the `handleEmailAuth` function
-- Remove unused imports (`Input`, `Label`, `Mail`, `Alert`, `AlertDescription`)
+### 2. Update `src/pages/Auth.tsx`
+- Import `Turnstile` from `@marsidev/react-turnstile`
+- Add `captchaToken` state: `const [captchaToken, setCaptchaToken] = useState<string | null>(null)`
+- Add the `<Turnstile>` widget in the card content (above the GitHub button) with:
+  - `siteKey="0x4AAAAAACd8U7GjZowz43NG"`
+  - `onSuccess={(token) => setCaptchaToken(token)}`
+- Pass `captchaToken` to both auth methods:
+  - GitHub OAuth: `options: { captchaToken, redirectTo: ... }`
+  - Guest sign-in: `options: { captchaToken }` passed to `signInAnonymously()`
+- Disable sign-in buttons until `captchaToken` is available (buttons disabled when `loading || !captchaToken`)
+- Reset captcha token after failed attempts so the user must re-verify
 
-### 3. Reorganize layout
-- GitHub button becomes the primary CTA (using `default` variant instead of `outline`)
-- Below the separator ("Or continue with"), add a "Continue as Guest" button (using `outline` variant)
-- Update the card title to just "Welcome" (no sign-up toggle)
+### Technical Detail
 
-### 4. Add Guest sign-in via Supabase Anonymous Auth
-- Add a `handleGuestAuth` function that calls `supabase.auth.signInAnonymously()`
-- This creates an anonymous authenticated user in Supabase with the `authenticated` role
-- The anonymous user gets a valid session and JWT, just like a regular user
-- Note: Anonymous sign-ins must be enabled in the Supabase dashboard under Authentication > Providers > Anonymous Sign-Ins
+The Supabase `signInWithOAuth` and `signInAnonymously` methods both accept `options.captchaToken`. When CAPTCHA protection is enabled in the Supabase dashboard (under Authentication > Bot Detection), Supabase validates this token server-side before proceeding with authentication.
 
-### 5. Remove sign-up/sign-in toggle
-- Remove the bottom toggle link ("Don't have an account? Sign up")
+**Prerequisite**: CAPTCHA (Turnstile) must also be enabled in the Supabase dashboard under Authentication > Bot Detection (CAPTCHA), selecting Cloudflare Turnstile as the provider and entering the corresponding secret key.
 
-## Technical Details
-
-**File to modify:** `src/pages/Auth.tsx`
-
-Key changes:
-- Replace `handleEmailAuth` with `handleGuestAuth` using `supabase.auth.signInAnonymously()`
-- Promote GitHub button to primary style (`default` variant, full width, larger)
-- Add separator + Guest button below
-- Clean up unused state and imports
-- Update the icon in the header (replace `Mail` with a more generic icon like `LogIn` or keep `Github`)
-
-**Important prerequisite:** Anonymous sign-ins must be enabled in the Supabase dashboard (Authentication > Providers > Anonymous Sign-Ins toggle). Without this, `signInAnonymously()` will return an error.
