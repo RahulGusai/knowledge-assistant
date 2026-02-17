@@ -24,6 +24,12 @@ const ALLOWED_FILE_TYPES = {
   txt: "text/plain",
 };
 
+const FILE_SIZE_LIMITS: Record<string, number> = {
+  pdf: 10 * 1024 * 1024,
+  docx: 5 * 1024 * 1024,
+  txt: 2 * 1024 * 1024,
+};
+
 const getFileExtension = (fileName: string): string => {
   return fileName.split(".").pop()?.toLowerCase() || "";
 };
@@ -37,6 +43,7 @@ export default function Files() {
   const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
   const [deletingFiles, setDeletingFiles] = useState<string[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [isGoogleDriveConnected, setIsGoogleDriveConnected] = useState(false);
   const { toast } = useToast();
   const { addFileId, setTriggerBy, files, fetchFiles } = usePipeline();
@@ -208,14 +215,35 @@ export default function Files() {
     const invalidFiles = newFiles.filter((file) => !getContentType(file.name));
 
     if (invalidFiles.length > 0) {
-      toast({
-        title: "Invalid file type",
-        description: `Only ${Object.keys(ALLOWED_FILE_TYPES).join(", ")} files are allowed.`,
-        variant: "destructive",
-        duration: 5000,
-      });
+      const msg = `Only ${Object.keys(ALLOWED_FILE_TYPES).join(", ")} files are allowed.`;
+      setUploadError(msg);
+      toast({ title: "Invalid file type", description: msg, variant: "destructive", duration: 5000 });
       return;
     }
+
+    // Validate file size limits
+    const oversizedFiles = newFiles.filter((file) => {
+      const ext = getFileExtension(file.name);
+      const limit = FILE_SIZE_LIMITS[ext];
+      return limit && file.size > limit;
+    });
+
+    if (oversizedFiles.length > 0) {
+      const details = oversizedFiles
+        .map((file) => {
+          const ext = getFileExtension(file.name);
+          const limitMB = (FILE_SIZE_LIMITS[ext] / (1024 * 1024)).toFixed(0);
+          const sizeMB = (file.size / (1024 * 1024)).toFixed(2);
+          return `${file.name} (${sizeMB} MB, max ${limitMB} MB)`;
+        })
+        .join(", ");
+      const msg = `File(s) exceed size limits: ${details}`;
+      setUploadError(msg);
+      toast({ title: "File too large", description: msg, variant: "destructive", duration: 5000 });
+      return;
+    }
+
+    setUploadError(null);
 
     // Create uploading file items for tracking
     const uploadingFileItems: UploadingFile[] = newFiles.map((file) => ({
@@ -342,9 +370,14 @@ export default function Files() {
               <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
               <p className="text-lg font-medium mb-2">Drop files here</p>
               <p className="text-sm text-muted-foreground mb-4">or click the button below to browse</p>
-              <p className="text-xs text-muted-foreground mb-4">Supported formats: PDF, DOCX, TXT</p>
+              <p className="text-xs text-muted-foreground mb-2">Supported formats: PDF (max 10 MB), DOCX (max 5 MB), TXT (max 2 MB)</p>
+              {uploadError && (
+                <div className="mb-4 p-3 rounded-md bg-destructive/10 border border-destructive/30 text-destructive text-sm text-left">
+                  {uploadError}
+                </div>
+              )}
               <label htmlFor="file-upload">
-                <Button type="button" onClick={() => document.getElementById("file-upload")?.click()}>
+                <Button type="button" onClick={() => { setUploadError(null); document.getElementById("file-upload")?.click(); }}>
                   Select Files
                 </Button>
                 <input
