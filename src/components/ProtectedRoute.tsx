@@ -8,13 +8,17 @@ import { AlertCircle, RefreshCw } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export default function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  // Allow unrestricted access in preview mode
+  const isPreview = window.location.hostname.includes('preview--') || window.location.hostname === 'localhost';
+  
+  const [isLoading, setIsLoading] = useState(!isPreview);
+  const [isAuthenticated, setIsAuthenticated] = useState(isPreview);
   const { workspaceId, workspaceError, loadWorkspaceId, clearWorkspace } = useAppContext();
   const navigate = useNavigate();
 
   useEffect(() => {
     const checkAuthAndLoadWorkspace = async () => {
+      if (isPreview) return;
       if (!supabase) {
         setIsAuthenticated(false);
         setIsLoading(false);
@@ -86,7 +90,7 @@ export default function ProtectedRoute({ children }: { children: React.ReactNode
   }
 
   // Show error if workspace failed to load (after auth succeeded)
-  if (workspaceError || !workspaceId) {
+  if (!isPreview && (workspaceError || !workspaceId)) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
